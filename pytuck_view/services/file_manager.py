@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
+from pytuck.backends import is_valid_pytuck_database
 
 
 @dataclass
@@ -22,6 +23,7 @@ class FileRecord:
     name: str
     last_opened: str
     file_size: int
+    engine_name: str
 
 
 class FileManager:
@@ -84,9 +86,9 @@ class FileManager:
             raise FileNotFoundError(f"文件不存在: {file_path}")
 
         # 检查是否为支持的 pytuck 文件格式
-        supported_extensions = {'.bin', '.json', '.csv'}
-        if path_obj.suffix.lower() not in supported_extensions:
-            raise ValueError(f"不支持的文件格式: {path_obj.suffix}")
+        is_valid, engine = is_valid_pytuck_database(path_obj)
+        if not is_valid:
+            raise ValueError(f"该文件并非 Pytuck 数据库文件: {path_obj}")
 
         # 生成文件 ID 和记录
         file_id = str(uuid.uuid4())
@@ -95,7 +97,8 @@ class FileManager:
             path=str(path_obj.absolute()),
             name=path_obj.stem,
             last_opened=datetime.now().isoformat(),
-            file_size=path_obj.stat().st_size
+            file_size=path_obj.stat().st_size,
+            engine_name=engine
         )
 
         # 添加到当前打开的文件
@@ -132,33 +135,30 @@ class FileManager:
 
     def discover_files(self, directory: Optional[str] = None) -> List[Dict]:
         """在指定目录中发现 pytuck 文件"""
-        if directory is None:
-            directory = Path.cwd()
-        else:
-            directory = Path(directory)
+        target_dir = Path.cwd() / 'databases' if directory is None else Path(directory)
 
-        if not directory.exists() or not directory.is_dir():
+        if not target_dir.exists() or not target_dir.is_dir():
             return []
 
         discovered_files = []
-        supported_extensions = {'.bin', '.json', '.csv'}
 
         try:
-            for file_path in directory.iterdir():
-                if (file_path.is_file() and
-                    file_path.suffix.lower() in supported_extensions):
-                    try:
-                        size = file_path.stat().st_size
-                        discovered_files.append({
-                            "path": str(file_path.absolute()),
-                            "name": file_path.stem,
-                            "extension": file_path.suffix,
-                            "size": size
-                        })
-                    except Exception as e:
-                        print(f"警告: 无法读取文件信息 {file_path}: {e}")
+            for file_path in target_dir.iterdir():
+                if not file_path.is_file(): continue
+                is_valid, engine = is_valid_pytuck_database(file_path)
+                if not is_valid: continue
+                try:
+                    size = file_path.stat().st_size
+                    discovered_files.append({
+                        "path": str(file_path.absolute()),
+                        "name": file_path.stem,
+                        "extension": file_path.suffix,
+                        "size": size
+                    })
+                except Exception as e:
+                    print(f"警告: 无法读取文件信息 {file_path}: {e}")
         except Exception as e:
-            print(f"警告: 无法扫描目录 {directory}: {e}")
+            print(f"警告: 无法扫描目录 {target_dir}: {e}")
 
         return discovered_files
 

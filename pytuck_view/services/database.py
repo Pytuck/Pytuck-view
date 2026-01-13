@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from pytuck import Storage, Session
+from pytuck.backends import is_valid_pytuck_database
 
 from pytuck_view.common.tiny_func import simplify_exception
 
@@ -48,7 +49,7 @@ class DatabaseService:
                 raise FileNotFoundError(f"数据库文件不存在: {file_path}")
 
             # 根据文件扩展名确定引擎类型
-            engine = self._detect_engine(path_obj.suffix)
+            is_valid, engine = is_valid_pytuck_database(file_path)
 
             # 创建 Storage 实例
             self.storage = Storage(
@@ -66,15 +67,6 @@ class DatabaseService:
         except Exception as e:
             print(f"打开数据库失败: {e}")
             return False
-
-    def _detect_engine(self, suffix: str) -> str:
-        """根据文件后缀检测引擎类型"""
-        engine_map = {
-            '.bin': 'binary',
-            '.json': 'json',
-            '.csv': 'csv'
-        }
-        return engine_map.get(suffix.lower(), 'binary')
 
     def list_tables(self) -> List[str]:
         """列出所有表名"""
