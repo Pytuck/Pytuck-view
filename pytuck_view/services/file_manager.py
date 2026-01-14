@@ -37,6 +37,7 @@ class FileManager:
         self.config_dir = Path.cwd() / ".pytuck-view"
         self.config_file = self.config_dir / "recent_files.json"
         self.open_files: Dict[str, FileRecord] = {}  # 当前打开的文件
+        self.temporary_files: Dict[str, str] = {}  # file_id -> 临时文件路径（仅内存，用于 upload-open 清理）
         self._ensure_config_dir()
 
     def _ensure_config_dir(self):
@@ -135,9 +136,35 @@ class FileManager:
         """根据 file_id 获取当前打开的文件信息"""
         return self.open_files.get(file_id)
 
+    def remove_from_history(self, file_id: str) -> bool:
+        """从历史记录中移除指定 file_id。
+
+        仅删除 recent_files.json 中的记录，不会删除用户原始文件。
+        临时上传文件的清理由 close_file/temporary_files 负责。
+        """
+        files = self._load_recent_files()
+        new_files = [f for f in files if f.file_id != file_id]
+        if len(new_files) == len(files):
+            return False
+
+        self._save_recent_files(new_files)
+        return True
+
     def close_file(self, file_id: str):
         """关闭文件"""
         self.open_files.pop(file_id, None)
+
+        # 如果是 upload-open 产生的临时文件，关闭时顺手清理
+        temp_path = self.temporary_files.pop(file_id, None)
+        if temp_path:
+            try:
+                try:
+                    os.remove(temp_path)
+                except FileNotFoundError:
+                    pass
+            except Exception as e:
+                logger = get_logger(__name__)
+                logger.warning("无法删除临时文件 %s: %s", temp_path, simplify_exception(e))
 
     def discover_files(self, directory: Optional[str] = None) -> List[Dict]:
         """在指定目录中发现 pytuck 文件"""

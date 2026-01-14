@@ -9,12 +9,22 @@ API 路由模块
 import asyncio
 from typing import Dict, List, Optional, Any
 from pathlib import Path
+import uuid
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File
 from pydantic import BaseModel
 
 from ..services.file_manager import file_manager, FileRecord
 from ..services.database import DatabaseService
+
+
+def _safe_filename(name: str) -> str:
+    """生成一个尽量安全的文件名（仅用于临时文件保存）。"""
+    # 避免路径穿越，保留基础文件名
+    base = Path(name).name
+    # 极简过滤，去掉不可见字符
+    return "".join(ch for ch in base if ch.isprintable()) or "upload.bin"
+
 
 
 # 创建路由器
@@ -121,7 +131,8 @@ async def get_recent_files():
                 "path": file_record.path,
                 "name": file_record.name,
                 "last_opened": file_record.last_opened,
-                "file_size": file_record.file_size
+                "file_size": file_record.file_size,
+                "engine_name": file_record.engine_name,
             })
 
         return success_response(data={"files": files_data}, msg="获取最近文件列表成功")
@@ -138,6 +149,73 @@ async def discover_files(directory: Optional[str] = Query(None)):
         return success_response(data={"files": discovered}, msg="文件扫描成功")
     except Exception as e:
         return error_response(code=500, msg=f"文件扫描失败: {str(e)}")
+
+
+@router.post("/upload-open")
+async def upload_open(file: UploadFile = File(...)):
+    """上传文件并打开（用于拖拽/选择文件场景）。
+
+    说明：浏览器通常无法提供真实本地路径，因此通过上传到后端临时目录后再打开。
+    临时文件会记录在 file_manager.temporary_files 中，并在 close/delete 时清理。
+    """
+    try:
+        # 保存到临时目录
+        upload_dir = file_manager.config_dir / "uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        suffix = Path(file.filename or "").suffix
+        safe_name = _safe_filename(file.filename or "upload")
+        tmp_path = upload_dir / f"upload_{Path(safe_name).stem}_{uuid.uuid4().hex}{suffix}"
+
+        with open(tmp_path, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+
+        # 打开临时文件
+        file_record = file_manager.open_file(str(tmp_path))
+        if not file_record:
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
+            return error_response(code=404, msg="无法打开文件")
+
+        # 标记为临时文件，便于关闭时清理
+        file_manager.temporary_files[file_record.file_id] = str(tmp_path)
+
+        db_service = DatabaseService()
+        success = db_service.open_database(str(tmp_path))
+        if not success:
+            file_manager.close_file(file_record.file_id)
+            return error_response(code=500, msg="数据库打开失败")
+
+        db_services[file_record.file_id] = db_service
+
+        try:
+            tables = db_service.list_tables()
+            real_tables = [t for t in tables if not t.startswith(('⚠️', '💡', '📋'))]
+            tables_count = len(real_tables)
+        except:
+            tables_count = 0
+
+        data = {
+            "file_id": file_record.file_id,
+            "name": file_record.name,
+            "path": file_record.path,
+            "tables_count": tables_count,
+            "file_size": file_record.file_size,
+            "engine_name": file_record.engine_name,
+        }
+
+        return success_response(data=data, msg="数据库打开成功")
+
+    except ValueError as e:
+        return error_response(code=400, msg=str(e))
+    except Exception as e:
+        return error_response(code=500, msg=f"上传打开失败: {str(e)}")
 
 
 @router.post("/open-file")
@@ -173,7 +251,8 @@ async def open_file(request: OpenFileRequest):
             "name": file_record.name,
             "path": file_record.path,
             "tables_count": tables_count,
-            "file_size": file_record.file_size
+            "file_size": file_record.file_size,
+            "engine_name": file_record.engine_name,
         }
 
         return success_response(data=data, msg="数据库打开成功")
@@ -184,6 +263,35 @@ async def open_file(request: OpenFileRequest):
         return error_response(code=400, msg=str(e))
     except Exception as e:
         return error_response(code=500, msg=f"打开文件失败: {str(e)}")
+
+
+@router.delete("/recent-files/{file_id}")
+async def delete_recent_file(file_id: str):
+    """删除历史记录，并关闭后端已打开的文件（如存在）。"""
+    try:
+        # 关闭数据库服务
+        if file_id in db_services:
+            db_services[file_id].close()
+            del db_services[file_id]
+
+        # 清理全局 current_file_id
+        async with _current_file_lock:
+            global current_file_id
+            if current_file_id == file_id:
+                current_file_id = None
+
+        # 关闭文件（同时会清理 upload-open 临时文件）
+        file_manager.close_file(file_id)
+
+        # 从历史记录中移除
+        removed = file_manager.remove_from_history(file_id)
+        if not removed:
+            return error_response(code=404, msg="历史记录不存在")
+
+        return success_response(msg="历史记录已删除")
+
+    except Exception as e:
+        return error_response(code=500, msg=f"删除历史记录失败: {str(e)}")
 
 
 @router.get("/tables/{file_id}")
@@ -411,6 +519,7 @@ async def database_open(request: OpenFileRequest):
             "path": file_record.path,
             "tables_count": tables_count,
             "file_size": file_record.file_size,
+            "engine_name": file_record.engine_name,
             "status": "connected"
         }
 
