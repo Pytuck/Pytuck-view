@@ -14,6 +14,9 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 from pytuck.backends import is_valid_pytuck_database
 
+from pytuck_view.common.logger import get_logger
+from pytuck_view.common.tiny_func import simplify_exception
+
 
 @dataclass
 class FileRecord:
@@ -42,7 +45,8 @@ class FileManager:
             self.config_dir.mkdir(exist_ok=True)
         except Exception as e:
             # 如果无法创建配置目录，使用内存存储
-            print(f"警告: 无法创建配置目录 {self.config_dir}, 将使用内存存储: {e}")
+            logger = get_logger(__name__)
+            logger.warning("无法创建配置目录 %s, 将使用内存存储: %s", self.config_dir, simplify_exception(e))
             self.config_file = None
 
     def _load_recent_files(self) -> List[FileRecord]:
@@ -55,7 +59,8 @@ class FileManager:
                 data = json.load(f)
                 return [FileRecord(**item) for item in data]
         except Exception as e:
-            print(f"警告: 无法加载最近文件列表: {e}")
+            logger = get_logger(__name__)
+            logger.warning("无法加载最近文件列表: %s", simplify_exception(e))
             return []
 
     def _save_recent_files(self, files: List[FileRecord]):
@@ -68,7 +73,8 @@ class FileManager:
                 data = [asdict(record) for record in files]
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"警告: 无法保存最近文件列表: {e}")
+            logger = get_logger(__name__)
+            logger.warning("无法保存最近文件列表: %s", simplify_exception(e))
 
     def get_recent_files(self, limit: int = 10) -> List[FileRecord]:
         """获取最近打开的文件列表"""
@@ -156,9 +162,11 @@ class FileManager:
                         "size": size
                     })
                 except Exception as e:
-                    print(f"警告: 无法读取文件信息 {file_path}: {e}")
+                    logger = get_logger(__name__)
+                    logger.warning("无法读取文件信息 %s: %s", file_path, simplify_exception(e))
         except Exception as e:
-            print(f"警告: 无法扫描目录 {target_dir}: {e}")
+            logger = get_logger(__name__)
+            logger.warning("无法扫描目录 %s: %s", target_dir, simplify_exception(e))
 
         return discovered_files
 

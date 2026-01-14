@@ -16,6 +16,9 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 
+from pytuck_view.common.logger import init_logging, get_logger
+from pytuck_view.common.tiny_func import simplify_exception
+
 
 def find_free_port() -> int:
     """找到一个可用的端口"""
@@ -30,11 +33,12 @@ def open_browser(url: str, delay: float = 1.5):
     """延迟打开浏览器，确保服务器已启动"""
     def _open():
         time.sleep(delay)
+        logger = get_logger(__name__)
         try:
             webbrowser.open(url)
         except Exception as e:
-            print(f"无法自动打开浏览器: {e}")
-            print(f"请手动访问: {url}")
+            logger.warning("无法自动打开浏览器: %s", simplify_exception(e))
+            logger.info("请手动访问: %s", url)
 
     threading.Thread(target=_open, daemon=True).start()
 
@@ -42,21 +46,26 @@ def open_browser(url: str, delay: float = 1.5):
 @asynccontextmanager
 async def lifespan(app):
     """应用生命周期管理"""
-    print("🚀 pytuck-view 正在启动...")
+    logger = get_logger(__name__)
+    logger.info("🚀 pytuck-view 正在启动...")
     yield
-    print("👋 pytuck-view 正在关闭...")
+    logger.info("👋 pytuck-view 正在关闭...")
 
 
 def main():
     """主入口函数"""
+    # 首先初始化日志系统
+    init_logging()
+    logger = get_logger(__name__)
+
     try:
         # 查找可用端口
         port = find_free_port()
         url = f"http://localhost:{port}"
 
-        print(f"📊 pytuck-view v{__import__('pytuck_view').__version__}")
-        print(f"🌐 服务器启动在: {url}")
-        print("按 Ctrl+C 停止服务器")
+        logger.info("📊 pytuck-view v%s", __import__('pytuck_view').__version__)
+        logger.info("🌐 服务器启动在: %s", url)
+        logger.info("按 Ctrl+C 停止服务器")
 
         # 延迟打开浏览器
         open_browser(url)
@@ -72,9 +81,9 @@ def main():
         )
 
     except KeyboardInterrupt:
-        print("\n✨ 感谢使用 pytuck-view!")
+        logger.info("\n✨ 感谢使用 pytuck-view!")
     except Exception as e:
-        print(f"❌ 启动失败: {e}")
+        logger.error("❌ 启动失败: %s", simplify_exception(e))
         sys.exit(1)
 
 

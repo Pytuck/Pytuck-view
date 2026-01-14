@@ -14,6 +14,7 @@ from pytuck import Storage, Session
 from pytuck.backends import is_valid_pytuck_database
 
 from pytuck_view.common.tiny_func import simplify_exception
+from pytuck_view.common.logger import get_logger
 
 
 @dataclass
@@ -65,7 +66,8 @@ class DatabaseService:
             return True
 
         except Exception as e:
-            print(f"打开数据库失败: {e}")
+            logger = get_logger(__name__)
+            logger.error("打开数据库失败: %s", simplify_exception(e))
             return False
 
     def list_tables(self) -> List[str]:
@@ -85,7 +87,8 @@ class DatabaseService:
                 return self._get_placeholder_tables()
 
         except Exception as e:
-            print(f"获取表列表失败: {e}")
+            logger = get_logger(__name__)
+            logger.error("获取表列表失败: %s", simplify_exception(e))
             return self._get_placeholder_tables()
 
     def _get_placeholder_tables(self) -> List[str]:
@@ -126,7 +129,8 @@ class DatabaseService:
             return self._get_placeholder_table_info(table_name)
 
         except Exception as e:
-            print(f"获取表信息失败 {table_name}: {e}")
+            logger = get_logger(__name__)
+            logger.error("获取表信息失败 %s: %s", table_name, simplify_exception(e))
             return self._get_placeholder_table_info(table_name)
 
     def _extract_table_info(self, table, table_name: str) -> TableInfo:
@@ -175,7 +179,8 @@ class DatabaseService:
                     row_count = 0
 
         except Exception as e:
-            print(f"提取表信息失败: {e}")
+            logger = get_logger(__name__)
+            logger.error("提取表信息失败: %s", simplify_exception(e))
             columns = []
             row_count = 0
 
@@ -252,7 +257,8 @@ class DatabaseService:
                 serialized_rows.append(self._serialize_value(row))
 
             server_side = True
-            print(f"使用服务端分页查询 {table_name}，返回 {len(serialized_rows)} 行，总计 {total} 行")
+            logger = get_logger(__name__)
+            logger.debug("使用服务端分页查询 %s，返回 %d 行，总计 %d 行", table_name, len(serialized_rows), total)
 
             return {
                 "rows": serialized_rows,
@@ -263,7 +269,8 @@ class DatabaseService:
             }
 
         except Exception as e:
-            print(f"获取表数据失败 {table_name}: {simplify_exception(e)}")
+            logger = get_logger(__name__)
+            logger.error("获取表数据失败 %s: %s", table_name, simplify_exception(e))
             return {
                 "rows": self._get_placeholder_data(),
                 "total": 1,
