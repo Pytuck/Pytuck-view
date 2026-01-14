@@ -34,55 +34,50 @@
                 <button @click="state.placeholderWarning = null">×</button>
             </div>
 
-            <!-- 快速操作 -->
+            <!-- 添加文件（选择/拖拽） -->
+            <input
+                ref="fileInputRef"
+                type="file"
+                style="display:none"
+                @change="onFileSelected"
+            />
+
             <div class="quick-actions">
-                <button @click="triggerFileDialog" class="btn btn-primary">
+                <button @click="triggerFileDialog" class="btn btn-primary" :disabled="state.loading">
                     📁 选择文件
-                </button>
-                <button @click="discoverFiles" class="btn btn-secondary" :disabled="state.loading">
-                    🔍 扫描当前目录
                 </button>
             </div>
 
-            <!-- 最近文件 -->
-            <section v-if="state.recentFiles.length > 0" class="file-section">
-                <h2>📋 最近打开</h2>
-                <div class="file-list">
-                    <div v-for="file in state.recentFiles" :key="file.file_id"
-                         class="file-item" @click="openFile(file.path)">
-                        <div class="file-info">
-                            <div class="file-name">{{ file.name }}</div>
-                            <div class="file-path">{{ file.path }}</div>
-                            <div class="file-meta">
-                                {{ formatFileSize(file.file_size) }} • {{ formatDate(file.last_opened) }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <div class="drop-zone"
+                 @dragenter.prevent
+                 @dragover.prevent
+                 @drop.prevent="onDrop">
+                <div class="drop-zone-title">把 pytuck 数据库文件拖到这里</div>
+                <div class="drop-zone-subtitle">或点击上方“选择文件”</div>
+            </div>
 
-            <!-- 发现的文件 -->
-            <section v-if="state.discoveredFiles.length > 0" class="file-section">
-                <h2>📁 当前目录</h2>
-                <div class="file-list">
-                    <div v-for="file in state.discoveredFiles" :key="file.path"
-                         class="file-item" @click="openFile(file.path)">
-                        <div class="file-info">
-                            <div class="file-name">{{ file.name }}{{ file.extension }}</div>
-                            <div class="file-path">{{ file.path }}</div>
-                            <div class="file-meta">
-                                {{ formatFileSize(file.size) }}
-                            </div>
+            <!-- 历史文件（卡片） -->
+            <section v-if="state.recentFiles.length > 0" class="file-section">
+                <h2>📋 历史文件</h2>
+                <div class="file-cards">
+                    <div v-for="file in state.recentFiles" :key="file.file_id" class="file-card" @click="openFile(file.path)">
+                        <button class="file-card-remove" title="移除" @click.stop="removeHistory(file.file_id)">×</button>
+                        <div class="file-card-title">
+                            <span class="file-card-name">{{ file.name }}</span>
+                            <span v-if="file.engine_name" class="engine-tag">{{ file.engine_name }}</span>
+                        </div>
+                        <div class="file-card-path">{{ file.path }}</div>
+                        <div class="file-card-meta">
+                            {{ formatFileSize(file.file_size) }} • {{ formatDate(file.last_opened) }}
                         </div>
                     </div>
                 </div>
             </section>
 
             <!-- 空状态 -->
-            <div v-if="!state.loading && state.recentFiles.length === 0 && state.discoveredFiles.length === 0"
-                 class="empty-state">
-                <p>🔍 未发现 pytuck 数据库文件</p>
-                <p>支持的格式：.bin, .json, .csv</p>
+            <div v-if="!state.loading && state.recentFiles.length === 0" class="empty-state">
+                <p>📁 还没有添加过文件</p>
+                <p>支持拖拽或选择一个 pytuck 数据库文件开始</p>
             </div>
         </div>
 
@@ -132,51 +127,65 @@
                             <p>{{ state.tableSchema.row_count }} 行数据</p>
                         </div>
 
-                        <!-- 表结构 -->
-                        <div v-if="state.tableSchema && state.tableSchema.columns" class="schema">
+                        <!-- Tab -->
+                        <div class="tab-bar">
+                            <button class="tab" :class="{active: state.activeTab === 'structure'}" @click="state.activeTab = 'structure'">结构</button>
+                            <button class="tab" :class="{active: state.activeTab === 'data'}" @click="switchToDataTab">数据</button>
+                        </div>
+
+                        <!-- 结构 Tab -->
+                        <div v-if="state.activeTab === 'structure'" class="schema">
                             <h3>🔧 表结构</h3>
-                            <div class="columns">
-                                <div v-for="col in state.tableSchema.columns" :key="col.name" class="column">
-                                    <span class="col-name">{{ col.name }}</span>
-                                    <span class="col-type">{{ col.type }}</span>
-                                    <span v-if="col.primary_key" class="col-pk">🔑</span>
+                            <div v-if="state.tableSchema && state.tableSchema.columns" class="columns-list">
+                                <div v-for="col in state.tableSchema.columns" :key="col.name" class="column-row">
+                                    <div class="column-row-main">
+                                        <span class="col-name">{{ col.name }}</span>
+                                        <span class="col-type">{{ col.type }}</span>
+                                        <span v-if="col.primary_key" class="col-pk">🔑</span>
+                                    </div>
+                                    <div class="column-row-meta">
+                                        <span v-if="col.nullable === false">NOT NULL</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 数据表格 -->
-                        <div v-if="hasData" class="data-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th v-for="col in state.tableSchema.columns" :key="col.name"
-                                            @click="sortTable(col.name)"
-                                            class="sortable">
-                                            {{ col.name }}
-                                            <span v-if="state.sortBy === col.name">
-                                                <span v-if="state.sortOrder === 'asc'">↑</span>
-                                                <span v-else>↓</span>
-                                            </span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(row, index) in state.tableData" :key="index">
-                                        <td v-for="col in state.tableSchema.columns" :key="col.name">
-                                            {{ row[col.name] }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <!-- 数据 Tab -->
+                        <div v-else class="data-tab">
+                            <!-- 数据表格 -->
+                            <div v-if="hasData" class="data-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th v-for="col in state.tableSchema.columns" :key="col.name"
+                                                @click="sortTable(col.name)"
+                                                class="sortable">
+                                                {{ col.name }}
+                                                <span v-if="state.sortBy === col.name">
+                                                    <span v-if="state.sortOrder === 'asc'">↑</span>
+                                                    <span v-else>↓</span>
+                                                </span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(row, index) in state.tableData" :key="index">
+                                            <td v-for="col in state.tableSchema.columns" :key="col.name">
+                                                {{ row[col.name] }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
 
-                        <!-- 分页 -->
-                        <div v-if="totalPages > 1" class="pagination">
-                            <button @click="goToPage(1)" :disabled="state.currentPageNum === 1">首页</button>
-                            <button @click="goToPage(state.currentPageNum - 1)" :disabled="state.currentPageNum === 1">上一页</button>
-                            <span>第 {{ state.currentPageNum }} / {{ totalPages }} 页</span>
-                            <button @click="goToPage(state.currentPageNum + 1)" :disabled="state.currentPageNum === totalPages">下一页</button>
-                            <button @click="goToPage(totalPages)" :disabled="state.currentPageNum === totalPages">尾页</button>
+                            <!-- 分页 -->
+                            <div v-if="totalPages > 1" class="pagination">
+                                <button @click="goToPage(1)" :disabled="state.currentPageNum === 1">首页</button>
+                                <button @click="goToPage(state.currentPageNum - 1)" :disabled="state.currentPageNum === 1">上一页</button>
+                                <span>第 {{ state.currentPageNum }} / {{ totalPages }} 页</span>
+                                <button @click="goToPage(state.currentPageNum + 1)" :disabled="state.currentPageNum === totalPages">下一页</button>
+                                <button @click="goToPage(totalPages)" :disabled="state.currentPageNum === totalPages">尾页</button>
+                            </div>
                         </div>
                     </div>
                 </main>
@@ -202,10 +211,10 @@
                 const state = reactive({
                     currentPage: 'file-selector', // 'file-selector', 'database-view'
                     recentFiles: [],
-                    discoveredFiles: [],
                     currentDatabase: null,
                     tables: [],
                     currentTable: null,
+                    activeTab: 'structure', // 'structure' | 'data'
                     tableSchema: null,
                     tableData: [],
                     currentPageNum: 1,
@@ -270,7 +279,9 @@
                     try {
                         state.loading = true;
                         const data = await api('/recent-files');
-                        state.recentFiles = data.files || [];
+                        const files = data.files || [];
+                        files.sort((a, b) => String(b.last_opened).localeCompare(String(a.last_opened)));
+                        state.recentFiles = files;
                     } catch (error) {
                         console.error('加载最近文件失败:', error);
                     } finally {
@@ -278,14 +289,74 @@
                     }
                 }
 
-                // 发现当前目录文件
-                async function discoverFiles() {
+
+                const fileInputRef = ref(null);
+
+                async function uploadAndOpen(file) {
+                    if (!file) return;
+
                     try {
                         state.loading = true;
-                        const data = await api('/discover-files');
-                        state.discoveredFiles = data.files || [];
+                        state.error = null;
+                        state.placeholderWarning = null;
+
+                        const form = new FormData();
+                        form.append('file', file);
+
+                        const response = await fetch('/api/upload-open', {
+                            method: 'POST',
+                            body: form
+                        });
+
+                        const result = await response.json();
+                        if (result.code !== undefined) {
+                            if (result.code !== 200) throw new Error(result.msg || `错误代码: ${result.code}`);
+                            if (result.msg && (result.msg.includes('暂不可用') || result.msg.includes('需要') || result.msg.includes('占位符'))) {
+                                state.placeholderWarning = result.msg;
+                            }
+                        } else if (!response.ok) {
+                            throw new Error(result.detail || `HTTP ${response.status}`);
+                        }
+
+                        const data = result.data || result;
+                        state.currentDatabase = data;
+                        state.currentPage = 'database-view';
+                        await loadTables();
+                        await loadRecentFiles();
+
                     } catch (error) {
-                        console.error('发现文件失败:', error);
+                        console.error('上传打开失败:', error);
+                        state.error = `打开文件失败: ${error.message}`;
+                    } finally {
+                        state.loading = false;
+                        if (fileInputRef.value) fileInputRef.value.value = '';
+                    }
+                }
+
+                function onDrop(e) {
+                    const files = e.dataTransfer && e.dataTransfer.files;
+                    if (!files || files.length === 0) return;
+                    uploadAndOpen(files[0]);
+                }
+
+                function onFileSelected(e) {
+                    const files = e.target && e.target.files;
+                    if (!files || files.length === 0) return;
+                    uploadAndOpen(files[0]);
+                }
+
+                async function removeHistory(fileId) {
+                    try {
+                        state.loading = true;
+                        await api(`/recent-files/${fileId}`, { method: 'DELETE' });
+
+                        if (state.currentDatabase && state.currentDatabase.file_id === fileId) {
+                            backToFileSelector();
+                        }
+
+                        await loadRecentFiles();
+                    } catch (error) {
+                        state.error = `移除失败: ${error.message}`;
                     } finally {
                         state.loading = false;
                     }
@@ -339,12 +410,14 @@
                         state.loading = true;
                         state.currentTable = tableName;
                         state.currentPageNum = 1;
+                        state.activeTab = 'structure';
 
-                        // 并行加载表结构和数据
-                        await Promise.all([
-                            loadTableSchema(tableName),
-                            loadTableData(tableName, 1)
-                        ]);
+                        // 先加载结构
+                        await loadTableSchema(tableName);
+
+                        // 数据 Tab 采用按需加载
+                        state.tableData = [];
+                        state.totalRows = 0;
 
                     } catch (error) {
                         state.error = `加载表数据失败: ${error.message}`;
@@ -394,6 +467,18 @@
                     }
                 }
 
+                async function switchToDataTab() {
+                    if (!state.currentTable) {
+                        state.activeTab = 'data';
+                        return;
+                    }
+
+                    state.activeTab = 'data';
+                    if (!state.tableData || state.tableData.length === 0) {
+                        await loadTableData(state.currentTable, state.currentPageNum || 1);
+                    }
+                }
+
                 // 排序
                 async function sortTable(columnName) {
                     if (state.sortBy === columnName) {
@@ -412,6 +497,8 @@
                 async function goToPage(page) {
                     if (page < 1 || page > totalPages.value || !state.currentTable) return;
 
+                    // 切到数据 Tab 才加载数据
+                    state.activeTab = 'data';
                     await loadTableData(state.currentTable, page);
                 }
 
@@ -421,8 +508,11 @@
                     state.currentDatabase = null;
                     state.tables = [];
                     state.currentTable = null;
+                    state.activeTab = 'structure';
                     state.tableSchema = null;
                     state.tableData = [];
+                    state.totalRows = 0;
+                    state.currentPageNum = 1;
                 }
 
                 // 格式化文件大小
@@ -442,22 +532,28 @@
 
                 // 触发文件选择对话框
                 function triggerFileDialog() {
-                    alert('文件选择功能需要在桌面环境中运行。请直接将文件拖拽到当前目录，然后点击"扫描当前目录"。');
+                    if (state.loading) return;
+                    nextTick(() => {
+                        if (fileInputRef.value) fileInputRef.value.click();
+                    });
                 }
 
                 // 初始化
                 onMounted(async () => {
-                    await Promise.all([
-                        loadRecentFiles(),
-                        discoverFiles()
-                    ]);
+                    await loadRecentFiles();
                 });
 
                 return {
                     state,
+                    fileInputRef,
                     totalPages,
                     hasData,
                     openFile,
+                    uploadAndOpen,
+                    onDrop,
+                    onFileSelected,
+                    removeHistory,
+                    switchToDataTab,
                     selectTable,
                     sortTable,
                     goToPage,
@@ -465,8 +561,7 @@
                     triggerFileDialog,
                     formatFileSize,
                     formatDate,
-                    loadRecentFiles,
-                    discoverFiles
+                    loadRecentFiles
                 };
             }
         }).mount('#app');
