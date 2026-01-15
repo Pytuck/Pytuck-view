@@ -10,3 +10,37 @@ dependencies = [
     "uvicorn>=0.20.0",
     "jinja2>=3.0.0",
 ]
+
+[dependency-groups]
+# uv dev 依赖组（PEP 735）：仅用于开发/CI，不进入运行时依赖链
+dev = [
+    "ruff>=0.9.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+# 规则选择保持克制：优先抓出真实问题，避免引入过多争议性规则
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.isort]
+# 与 black/ruff 默认风格保持一致
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+show_error_codes = true
+warn_unused_configs = true
+
+# 第三方库未提供类型时，允许跳过（否则 strict 会被大量 import 错误淹没）
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+# 约定测试目录
+testpaths = ["tests"]
+addopts = "-q"
