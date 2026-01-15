@@ -8,19 +8,20 @@
 import json
 import os
 import uuid
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
+
 from pytuck.backends import is_valid_pytuck_database
 
-from pytuck_view.common.logger import get_logger
-from pytuck_view.common.tiny_func import simplify_exception
+from pytuck_view.utils.logger import get_logger
+from pytuck_view.utils.tiny_func import simplify_exception
 
 
 @dataclass
 class FileRecord:
     """文件记录数据类"""
+
     file_id: str
     path: str
     name: str
@@ -36,8 +37,10 @@ class FileManager:
         # 配置文件存储在程序入口同级的 .pytuck-view 目录下
         self.config_dir = Path.cwd() / ".pytuck-view"
         self.config_file = self.config_dir / "recent_files.json"
-        self.open_files: Dict[str, FileRecord] = {}  # 当前打开的文件
-        self.temporary_files: Dict[str, str] = {}  # file_id -> 临时文件路径（仅内存，用于 upload-open 清理）
+        self.open_files: dict[str, FileRecord] = {}  # 当前打开的文件
+        self.temporary_files: dict[
+            str, str
+        ] = {}  # file_id -> 临时文件路径（仅内存，用于 upload-open 清理）
         self._ensure_config_dir()
 
     def _ensure_config_dir(self):
@@ -47,16 +50,20 @@ class FileManager:
         except Exception as e:
             # 如果无法创建配置目录，使用内存存储
             logger = get_logger(__name__)
-            logger.warning("无法创建配置目录 %s, 将使用内存存储: %s", self.config_dir, simplify_exception(e))
+            logger.warning(
+                "无法创建配置目录 %s, 将使用内存存储: %s",
+                self.config_dir,
+                simplify_exception(e),
+            )
             self.config_file = None
 
-    def _load_recent_files(self) -> List[FileRecord]:
+    def _load_recent_files(self) -> list[FileRecord]:
         """从 JSON 文件加载最近文件列表"""
         if not self.config_file or not self.config_file.exists():
             return []
 
         try:
-            with open(self.config_file, 'r', encoding='utf-8') as f:
+            with open(self.config_file, encoding="utf-8") as f:
                 data = json.load(f)
                 return [FileRecord(**item) for item in data]
         except Exception as e:
@@ -64,27 +71,27 @@ class FileManager:
             logger.warning("无法加载最近文件列表: %s", simplify_exception(e))
             return []
 
-    def _save_recent_files(self, files: List[FileRecord]):
+    def _save_recent_files(self, files: list[FileRecord]):
         """保存最近文件列表到 JSON 文件"""
         if not self.config_file:
             return  # 内存模式，不保存
 
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            with open(self.config_file, "w", encoding="utf-8") as f:
                 data = [asdict(record) for record in files]
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger = get_logger(__name__)
             logger.warning("无法保存最近文件列表: %s", simplify_exception(e))
 
-    def get_recent_files(self, limit: int = 10) -> List[FileRecord]:
+    def get_recent_files(self, limit: int = 10) -> list[FileRecord]:
         """获取最近打开的文件列表"""
         files = self._load_recent_files()
         # 按最后打开时间排序，最新的在前面
         files.sort(key=lambda x: x.last_opened, reverse=True)
         return files[:limit]
 
-    def open_file(self, file_path: str) -> Optional[FileRecord]:
+    def open_file(self, file_path: str) -> FileRecord | None:
         """打开文件并添加到历史记录"""
         path_obj = Path(file_path)
 
@@ -105,7 +112,7 @@ class FileManager:
             name=path_obj.stem,
             last_opened=datetime.now().isoformat(),
             file_size=path_obj.stat().st_size,
-            engine_name=engine
+            engine_name=engine,
         )
 
         # 添加到当前打开的文件
@@ -132,7 +139,7 @@ class FileManager:
         # 保存更新后的列表
         self._save_recent_files(files)
 
-    def get_open_file(self, file_id: str) -> Optional[FileRecord]:
+    def get_open_file(self, file_id: str) -> FileRecord | None:
         """根据 file_id 获取当前打开的文件信息"""
         return self.open_files.get(file_id)
 
@@ -164,11 +171,13 @@ class FileManager:
                     pass
             except Exception as e:
                 logger = get_logger(__name__)
-                logger.warning("无法删除临时文件 %s: %s", temp_path, simplify_exception(e))
+                logger.warning(
+                    "无法删除临时文件 %s: %s", temp_path, simplify_exception(e)
+                )
 
-    def discover_files(self, directory: Optional[str] = None) -> List[Dict]:
+    def discover_files(self, directory: str | None = None) -> list[dict]:
         """在指定目录中发现 pytuck 文件"""
-        target_dir = Path.cwd() / 'databases' if directory is None else Path(directory)
+        target_dir = Path.cwd() / "databases" if directory is None else Path(directory)
 
         if not target_dir.exists() or not target_dir.is_dir():
             return []
@@ -177,20 +186,26 @@ class FileManager:
 
         try:
             for file_path in target_dir.iterdir():
-                if not file_path.is_file(): continue
+                if not file_path.is_file():
+                    continue
                 is_valid, engine = is_valid_pytuck_database(file_path)
-                if not is_valid: continue
+                if not is_valid:
+                    continue
                 try:
                     size = file_path.stat().st_size
-                    discovered_files.append({
-                        "path": str(file_path.absolute()),
-                        "name": file_path.stem,
-                        "extension": file_path.suffix,
-                        "size": size
-                    })
+                    discovered_files.append(
+                        {
+                            "path": str(file_path.absolute()),
+                            "name": file_path.stem,
+                            "extension": file_path.suffix,
+                            "size": size,
+                        }
+                    )
                 except Exception as e:
                     logger = get_logger(__name__)
-                    logger.warning("无法读取文件信息 %s: %s", file_path, simplify_exception(e))
+                    logger.warning(
+                        "无法读取文件信息 %s: %s", file_path, simplify_exception(e)
+                    )
         except Exception as e:
             logger = get_logger(__name__)
             logger.warning("无法扫描目录 %s: %s", target_dir, simplify_exception(e))
