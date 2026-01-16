@@ -87,12 +87,17 @@ async def open_file(request: OpenFileBody) -> ApiResponse[dict]:
 
         db_services[file_record.file_id] = db_service
 
+        # 获取表数量
+        tables = db_service.list_tables()
+        tables_count = len(tables)
+
         data = {
             "file_id": file_record.file_id,
             "name": file_record.name,
             "path": file_record.path,
             "file_size": file_record.file_size,
             "engine_name": file_record.engine_name,
+            "tables_count": tables_count,
         }
         return ok(data=data, msg="数据库打开成功")
     except ValueError as e:
