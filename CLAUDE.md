@@ -12,40 +12,67 @@
 ## 技术选型（冻结）
 | 组件 | 选型 | 版本锁定 | 理由 |
 |---|---|---|---|
-| 后端 | FastAPI | `>=0.110,<1` | 开发快、异步预留、纯 Python |
+| 后端 | FastAPI | `>=0.128,<1` | 开发快、异步预留、纯 Python |
 | 服务器 | uvicorn | `>=0.20` | 同样纯 Python，Windows 无编译 |
-| 模板 | Jinja2 | 随 FastAPI 间接依赖 | 语法熟悉、可内嵌 |
-| 前端 | vue.min.js | 3.x 单文件落盘 | 体积小、响应式、与“view”谐音 |
+| 前端 | vue.min.js | 3.x 单文件落盘 | 体积小、响应式、与"view"谐音 |
 | UI 框架 | 无 | 原生 HTML + 少量 CSS | 避免打包体积爆炸 |
 | 代码风格 | ruff | formatter + linter（统一入口） | 提交前 `make fmt` |
 | 类型检查 | mypy | strict（CI 门禁） | 关键边界类型覆盖，降低回归风险 |
 | 最低 Python | 3.12+ | 与 pyproject.toml 一致 | 使用 3.12 typing 改进 |
 
+**注意**：项目已移除 Jinja2 模板引擎，前端改为纯静态 HTML + Vue 3，后端仅提供 JSON API。
+
 ## 目录规范
 ```
 pytuck_view/
  ├─ __main__.py         # 唯一入口：uvicorn.run + 浏览器自启
- ├─ app.py              # FastAPI 工厂，挂 static、templates、路由
+ ├─ app.py              # FastAPI 工厂，挂 static、路由
  ├─ api/
  │   ├─ __init__.py
- │   └─ routes.py       # 所有 /api/* 端点
- ├─ static/             # 纯静态，vue.min.js 必须本地落盘
- ├─ templates/          # 仅 index.html 入口模板
- ├─ vendor/             # 可选内嵌 jinja2/markupsafe 源码，实现真·零 pip 依赖
+ │   ├─ files.py        # 文件管理相关端点
+ │   └─ tables.py       # 表/数据相关端点
+ ├─ static/             # 纯静态资源
+ │   ├─ index.html      # 主页面（纯静态，无模板语法）
+ │   ├─ vue.min.js      # Vue 3 本地文件
+ │   └─ app.css         # 样式文件
+ ├─ services/           # 业务逻辑层
+ ├─ base/               # 基础模块（schemas、middleware 等）
+ ├─ utils/              # 工具函数
  └─ tests/              # 用 pytest，不依赖外部服务
 ```
 > 新增文件先问自己：用户需要多下载多少 KB？> 50 KB 需写理由。
 
 ## 运行/调试
-```bash
-# 开发热重载
-uvicorn pytuck_view.app:create_app --factory --reload --port 0
 
-# 本地质量门禁（建议提交前运行；CI 会强制）
+**重要提示**：本项目使用虚拟环境管理依赖，确保使用虚拟环境中的工具运行。
+
+### 环境准备
+```bash
+# 激活虚拟环境（如果尚未激活）
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+```
+
+### 开发运行
+```bash
+# 方式1：激活虚拟环境后直接运行
+uvicorn pytuck_view.app:create_app --factory --reload --port 8000
+
+# 方式2：使用虚拟环境中的 uvicorn（无需激活）
+.venv/Scripts/uvicorn.exe pytuck_view.app:create_app --factory --reload --port 8000  # Windows
+.venv/bin/uvicorn pytuck_view.app:create_app --factory --reload --port 8000           # macOS/Linux
+```
+
+### 本地质量门禁（建议提交前运行；CI 会强制）
+```bash
 make fmt      # ruff format
 make check    # ruff check + mypy(strict) + pytest
+```
 
-# 一键打包
+### 一键打包
+```bash
 make zipapp   # 生成 dist/pytuck-view.pyz
 make exe      # nuitka --onefile，生成 dist/pytuck-view.exe
 ```
@@ -59,10 +86,12 @@ make exe      # nuitka --onefile，生成 dist/pytuck-view.exe
 3. 出错时 `{"detail": "人类可读原因"}`，前端直接 `alert(detail)`。
 
 ## 前端约定
-- 不写 `.vue` 单文件，直接 `index.html` 内嵌 `<script>`，减少构建链。
+- 不使用模板引擎，`static/index.html` 为纯静态 HTML 文件。
+- 不写 `.vue` 单文件，直接在 `index.html` 内嵌 `<script>`，减少构建链。
 - 静态资源路径全部 `/static/...`，方便以后 CDN 替换。
-- 样式用 `<style scoped>` 写在组件旁，总 CSS ≤ 20 KB。
-- 网络请求封装成 `async function api(path, body=null)`，统一错误弹窗。
+- 样式直接写在 `<style>` 标签中，总 CSS ≤ 20 KB。
+- 网络请求封装成 `async function api(path, options)`，统一错误处理。
+- 使用 Vue 3 响应式 API（`reactive`、`computed` 等）管理状态。
 
 ## 体积红线
 - 整个 wheel ≤ 2 MB；
