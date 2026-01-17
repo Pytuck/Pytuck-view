@@ -89,14 +89,16 @@ class FileManager:
                     with open(self.config_file, encoding="utf-8") as f:
                         existing_data = json.load(f)
                         if isinstance(existing_data, dict):
-                            existing_last_dir = existing_data.get("last_browse_directory")
+                            existing_last_dir = existing_data.get(
+                                "last_browse_directory"
+                            )
                 except:
                     pass
 
             # 新格式：包含 files 和 last_browse_directory
             data = {
                 "last_browse_directory": existing_last_dir,
-                "files": [asdict(record) for record in files]
+                "files": [asdict(record) for record in files],
             }
 
             with open(self.config_file, "w", encoding="utf-8") as f:

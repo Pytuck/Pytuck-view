@@ -29,7 +29,9 @@ async def get_tables(file_id: str) -> ApiResponse[dict]:
                 msg="表列表获取成功，但部分功能需要 pytuck 库支持",
             )
 
-        return ok(data={"tables": tables, "has_placeholder": False}, msg="表列表获取成功")
+        return ok(
+            data={"tables": tables, "has_placeholder": False}, msg="表列表获取成功"
+        )
     except Exception as e:
         return fail(msg=f"获取表列表失败: {e}")
 

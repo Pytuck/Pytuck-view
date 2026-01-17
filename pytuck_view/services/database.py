@@ -162,9 +162,15 @@ class DatabaseService:
                             ),
                             "nullable": bool(getattr(col_obj, "nullable", True)),
                             "primary_key": bool(getattr(col_obj, "primary_key", False)),
-                            "default_value": str(getattr(col_obj, "default", None)) if getattr(col_obj, "default", None) is not None else None,
-                            "comment": str(getattr(col_obj, "comment", "")) if getattr(col_obj, "comment", None) else None,
-                            "autoincrement": bool(getattr(col_obj, "autoincrement", False)),
+                            "default_value": str(getattr(col_obj, "default", None))
+                            if getattr(col_obj, "default", None) is not None
+                            else None,
+                            "comment": str(getattr(col_obj, "comment", ""))
+                            if getattr(col_obj, "comment", None)
+                            else None,
+                            "autoincrement": bool(
+                                getattr(col_obj, "autoincrement", False)
+                            ),
                             "unique": bool(getattr(col_obj, "unique", False)),
                         }
                         columns.append(col_info)
@@ -177,9 +183,15 @@ class DatabaseService:
                                 "type": str(col_def.get("type", "unknown")),
                                 "nullable": bool(col_def.get("nullable", True)),
                                 "primary_key": bool(col_def.get("primary_key", False)),
-                                "default_value": str(col_def.get("default")) if col_def.get("default") is not None else None,
-                                "comment": str(col_def.get("comment", "")) if col_def.get("comment") else None,
-                                "autoincrement": bool(col_def.get("autoincrement", False)),
+                                "default_value": str(col_def.get("default"))
+                                if col_def.get("default") is not None
+                                else None,
+                                "comment": str(col_def.get("comment", ""))
+                                if col_def.get("comment")
+                                else None,
+                                "autoincrement": bool(
+                                    col_def.get("autoincrement", False)
+                                ),
                                 "unique": bool(col_def.get("unique", False)),
                             }
                             columns.append(col_info)

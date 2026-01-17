@@ -8,6 +8,7 @@
 
 统一前缀由 app.include_router(..., prefix="/api") 提供。
 """
+
 import asyncio
 from pathlib import Path
 
@@ -104,7 +105,6 @@ async def open_file(request: OpenFileBody) -> ApiResponse[dict]:
         return fail(code=1, msg=str(e))
     except Exception as e:
         return fail(msg=f"打开文件失败: {e}")
-
 
 
 @router.delete(
@@ -220,26 +220,32 @@ async def browse_directory(path: str | None = Query(None)) -> ApiResponse[dict]:
 
         try:
             # 遍历目录内容
-            for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+            for child in sorted(
+                target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())
+            ):
                 try:
                     if child.is_dir():
                         # 添加子目录
-                        entries.append({
-                            "name": child.name,
-                            "path": str(child.resolve()),
-                            "type": "dir",
-                            "size": None,
-                            "mtime": child.stat().st_mtime,
-                        })
+                        entries.append(
+                            {
+                                "name": child.name,
+                                "path": str(child.resolve()),
+                                "type": "dir",
+                                "size": None,
+                                "mtime": child.stat().st_mtime,
+                            }
+                        )
                     elif child.is_file():
                         # 添加所有文件（不做后缀筛选）
-                        entries.append({
-                            "name": child.name,
-                            "path": str(child.resolve()),
-                            "type": "file",
-                            "size": child.stat().st_size,
-                            "mtime": child.stat().st_mtime,
-                        })
+                        entries.append(
+                            {
+                                "name": child.name,
+                                "path": str(child.resolve()),
+                                "type": "file",
+                                "size": child.stat().st_size,
+                                "mtime": child.stat().st_mtime,
+                            }
+                        )
                 except PermissionError:
                     # 跳过无权限的条目
                     continue
