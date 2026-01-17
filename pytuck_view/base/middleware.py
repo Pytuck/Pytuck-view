@@ -13,13 +13,12 @@
 - 不做日志、不落盘。
 """
 
-from collections.abc import Callable
-from typing import Coroutine
+from collections.abc import Callable, Coroutine
 
 from fastapi import Request, Response
 
-from .context import ContextManager
 from ..utils.schemas import ContextInfo
+from .context import ContextManager
 
 
 def _parse_language(request: Request) -> str:
