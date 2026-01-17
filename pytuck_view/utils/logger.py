@@ -51,3 +51,8 @@ def init_logging(verbosity: int | None = None) -> None:
 def get_logger(name: str) -> logging.Logger:
     """获取指定名称的 logger"""
     return logging.getLogger(name)
+
+
+# 导出全局 logger 实例，供所有模块使用
+# 使用包名作为 logger 名称，统一日志来源
+logger = get_logger("pytuck_view")

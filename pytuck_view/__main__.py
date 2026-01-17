@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 
-from pytuck_view.utils.logger import get_logger, init_logging
+from pytuck_view.utils.logger import init_logging, logger
 from pytuck_view.utils.tiny_func import simplify_exception
 
 
@@ -33,7 +33,6 @@ def open_browser(url: str, delay: float = 1.5):
 
     def _open():
         time.sleep(delay)
-        logger = get_logger(__name__)
         try:
             webbrowser.open(url)
         except Exception as e:
@@ -46,7 +45,6 @@ def open_browser(url: str, delay: float = 1.5):
 @asynccontextmanager
 async def lifespan(app):
     """应用生命周期管理"""
-    logger = get_logger(__name__)
     logger.info("🚀 pytuck-view 正在启动...")
     yield
     logger.info("👋 pytuck-view 正在关闭...")
@@ -56,7 +54,6 @@ def main():
     """主入口函数"""
     # 首先初始化日志系统
     init_logging()
-    logger = get_logger(__name__)
 
     try:
         # 查找可用端口

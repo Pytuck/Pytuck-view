@@ -14,7 +14,7 @@ from typing import Any
 from pytuck import Session, Storage
 from pytuck.backends import is_valid_pytuck_database
 
-from pytuck_view.utils.logger import get_logger
+from pytuck_view.utils.logger import logger
 from pytuck_view.utils.tiny_func import simplify_exception
 
 
@@ -71,7 +71,6 @@ class DatabaseService:
             return True
 
         except Exception as e:
-            logger = get_logger(__name__)
             logger.error("打开数据库失败: %s", simplify_exception(e))
             return False
 
@@ -92,7 +91,6 @@ class DatabaseService:
                 return self._get_placeholder_tables()
 
         except Exception as e:
-            logger = get_logger(__name__)
             logger.error("获取表列表失败: %s", simplify_exception(e))
             return self._get_placeholder_tables()
 
@@ -136,7 +134,6 @@ class DatabaseService:
             return self._get_placeholder_table_info(table_name)
 
         except Exception as e:
-            logger = get_logger(__name__)
             logger.error("获取表信息失败 %s: %s", table_name, simplify_exception(e))
             return self._get_placeholder_table_info(table_name)
 
@@ -212,7 +209,6 @@ class DatabaseService:
                     row_count = 0
 
         except Exception as e:
-            logger = get_logger(__name__)
             logger.error("提取表信息失败: %s", simplify_exception(e))
             columns = []
             row_count = 0
@@ -294,7 +290,6 @@ class DatabaseService:
             for row in rows:
                 serialized_rows.append(self._serialize_value(row))
 
-            logger = get_logger(__name__)
             logger.debug(
                 "使用服务端分页查询 %s，返回 %d 行，总计 %d 行",
                 table_name,
@@ -311,7 +306,6 @@ class DatabaseService:
             }
 
         except Exception as e:
-            logger = get_logger(__name__)
             logger.error("获取表数据失败 %s: %s", table_name, simplify_exception(e))
             return {
                 "rows": self._get_placeholder_data(),

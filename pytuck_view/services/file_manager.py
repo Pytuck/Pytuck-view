@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pytuck.backends import is_valid_pytuck_database
 
-from pytuck_view.utils.logger import get_logger
+from pytuck_view.utils.logger import logger
 from pytuck_view.utils.tiny_func import simplify_exception
 
 
@@ -49,7 +49,6 @@ class FileManager:
             self.config_dir.mkdir(exist_ok=True)
         except Exception as e:
             # 如果无法创建配置目录，使用内存存储
-            logger = get_logger(__name__)
             logger.warning(
                 "无法创建配置目录 %s, 将使用内存存储: %s",
                 self.config_dir,
@@ -72,7 +71,6 @@ class FileManager:
                 else:
                     return []
         except Exception as e:
-            logger = get_logger(__name__)
             logger.warning("无法加载最近文件列表: %s", simplify_exception(e))
             return []
 
@@ -92,7 +90,7 @@ class FileManager:
                             existing_last_dir = existing_data.get(
                                 "last_browse_directory"
                             )
-                except:
+                except Exception:
                     pass
 
             # 新格式：包含 files 和 last_browse_directory
@@ -104,7 +102,6 @@ class FileManager:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger = get_logger(__name__)
             logger.warning("无法保存最近文件列表: %s", simplify_exception(e))
 
     def get_recent_files(self, limit: int = 10) -> list[FileRecord]:
@@ -193,7 +190,6 @@ class FileManager:
                 except FileNotFoundError:
                     pass
             except Exception as e:
-                logger = get_logger(__name__)
                 logger.warning(
                     "无法删除临时文件 %s: %s", temp_path, simplify_exception(e)
                 )
@@ -236,7 +232,6 @@ class FileManager:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger = get_logger(__name__)
             logger.warning("更新最后浏览目录失败: %s", simplify_exception(e))
 
     def discover_files(self, directory: str | None = None) -> list[dict]:
@@ -267,12 +262,10 @@ class FileManager:
                         }
                     )
                 except Exception as e:
-                    logger = get_logger(__name__)
                     logger.warning(
                         "无法读取文件信息 %s: %s", file_path, simplify_exception(e)
                     )
         except Exception as e:
-            logger = get_logger(__name__)
             logger.warning("无法扫描目录 %s: %s", target_dir, simplify_exception(e))
 
         return discovered_files

@@ -90,9 +90,11 @@ def zipapp(c):
     """构建 zipapp（.pyz 单文件）"""
     print("正在构建 zipapp（.pyz）...")
     Path("dist").mkdir(exist_ok=True)
-    c.run(
-        'uv run --group build python -m zipapp pytuck_view -o dist/pytuck-view.pyz -p "/usr/bin/env python3"'
+    cmd = (
+        "uv run --group build python -m zipapp pytuck_view "
+        '-o dist/pytuck-view.pyz -p "/usr/bin/env python3"'
     )
+    c.run(cmd)
     print("\n✓ zipapp 已生成到 dist/pytuck-view.pyz")
 
 
