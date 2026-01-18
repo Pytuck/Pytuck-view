@@ -284,8 +284,8 @@
 
             <!-- 空状态 -->
             <div v-if="!state.loading && state.recentFiles.length === 0" class="empty-state">
-                <p>📁 还没有添加过文件</p>
-                <p>点击"浏览目录"选择一个 pytuck 数据库文件开始</p>
+                <p>📁 {{ t('file.noFilesYet') }}</p>
+                <p>{{ t('common.selectDatabaseHint') }}</p>
             </div>
         </div>
 
@@ -426,7 +426,7 @@
         <div v-if="fileBrowser.visible" class="file-browser-overlay" @click.self="closeFileBrowser">
             <div class="file-browser-modal">
                 <div class="file-browser-header">
-                    <h2>📁 选择数据库文件</h2>
+                    <h2>📁 {{ t('file.selectDatabaseFile') }}</h2>
                     <button class="file-browser-close" @click="closeFileBrowser">×</button>
                 </div>
 
@@ -437,7 +437,7 @@
                             @keyup.enter="goToPath"
                             placeholder="输入路径直接跳转..."
                         />
-                        <button @click="goToPath">前往</button>
+                        <button @click="goToPath">{{ t('file.goTo') }}</button>
                     </div>
 
                     <div class="file-browser-breadcrumb">
@@ -465,7 +465,7 @@
                                 <span class="file-browser-item-icon">📁</span>
                                 <div>
                                     <div class="file-browser-item-name">..</div>
-                                    <div class="file-browser-item-meta">上级目录</div>
+                                    <div class="file-browser-item-meta">{{ t('file.parentDirectory') }}</div>
                                 </div>
                             </div>
                         </li>
@@ -493,7 +493,7 @@
                                 class="file-browser-item-action"
                                 @click.stop="selectAndOpenFile(entry.path)"
                             >
-                                打开
+                                {{ t('common.open') }}
                             </button>
                         </li>
                     </ul>

@@ -61,12 +61,19 @@ class FileUI(BaseUIClass):
     LAST_OPENED = I18nMessage(zh_cn="最后打开", en_us="Last Opened")
     ENGINE = I18nMessage(zh_cn="引擎", en_us="Engine")
     NO_FILES_YET = I18nMessage(
-        zh_cn="还没有打开过文件", en_us="No files opened yet"
+        zh_cn="还没有添加过文件", en_us="No files added yet"
     )
     SELECT_FILE_TO_VIEW = I18nMessage(
         zh_cn="请选择一个文件以查看其内容",
         en_us="Please select a file to view its content",
     )
+
+    # 文件浏览器
+    SELECT_DATABASE_FILE = I18nMessage(
+        zh_cn="选择数据库文件", en_us="Select Database File"
+    )
+    PARENT_DIRECTORY = I18nMessage(zh_cn="上级目录", en_us="Parent Directory")
+    GO_TO = I18nMessage(zh_cn="前往", en_us="Go")
 
 
 class TableUI(BaseUIClass):
