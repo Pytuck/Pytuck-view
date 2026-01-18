@@ -11,12 +11,10 @@ from typing import Any, TypeVar
 from pytuck_view.base.context import current_context
 from pytuck_view.base.exceptions import (
     AppException,
-    ServiceException,
-    ValidationException,
     ResultWarningException,
 )
 from pytuck_view.base.i18n import CommonI18n
-from pytuck_view.base.schemas import ApiResponse, fail, ok
+from pytuck_view.base.schemas import ApiResponse, SuccessResult
 from pytuck_view.utils.logger import logger
 from pytuck_view.utils.schemas import I18nMessage
 from pytuck_view.utils.tiny_func import simplify_exception
@@ -38,82 +36,6 @@ def get_current_lang() -> str:
         return "zh_cn"
 
 
-def api_response(
-    func: Callable[..., T | Coroutine[Any, Any, T]],
-) -> Callable[..., ApiResponse | Coroutine[Any, Any, ApiResponse]]:
-    """API 响应装饰器
-
-    自动处理：
-    1. 捕获异常并翻译消息
-    2. 统一响应格式（ApiResponse）
-    3. 错误日志记录
-
-    使用示例::
-
-        @router.get("/api/files")
-        @api_response
-        async def get_files(file_id: str):
-            if file_id not in db_services:
-                raise ServiceException(
-                    DatabaseI18n.DB_NOT_OPENED,
-                    file_id=file_id
-                )
-            return {"files": [...]}
-
-    :param func: 要装饰的函数
-    :return: 装饰后的函数
-    """
-
-    if iscoroutinefunction(func):
-
-        @functools.wraps(func)
-        async def async_wrapper(*args, **kwargs) -> ApiResponse:
-            try:
-                data = await func(*args, **kwargs)
-                return ok(data=data)
-            except ValidationException as e:
-                lang = get_current_lang()
-                msg = e.translate(lang)
-                return fail(msg=msg, data=e.data, code=2)
-            except ServiceException as e:
-                lang = get_current_lang()
-                msg = e.translate(lang)
-                return fail(msg=msg, data=e.data, code=1)
-            except AppException as e:
-                lang = get_current_lang()
-                msg = e.translate(lang)
-                return fail(msg=msg, data=e.data, code=1)
-            except Exception as e:
-                logger.error(f"未预期的错误: {func.__name__}", exc_info=e)
-                return fail(msg=f"服务器内部错误: {str(e)}", code=1)
-
-        return async_wrapper
-    else:
-
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> ApiResponse:
-            try:
-                data = func(*args, **kwargs)
-                return ok(data=data)
-            except ValidationException as e:
-                lang = get_current_lang()
-                msg = e.translate(lang)
-                return fail(msg=msg, data=e.data, code=2)
-            except ServiceException as e:
-                lang = get_current_lang()
-                msg = e.translate(lang)
-                return fail(msg=msg, data=e.data, code=1)
-            except AppException as e:
-                lang = get_current_lang()
-                msg = e.translate(lang)
-                return fail(msg=msg, data=e.data, code=1)
-            except Exception as e:
-                logger.error(f"未预期的错误: {func.__name__}", exc_info=e)
-                return fail(msg=f"服务器内部错误: {str(e)}", code=1)
-
-        return wrapper
-
-
 class ResponseUtil[T]:
     """
     返回 json 结果组装
@@ -124,7 +46,8 @@ class ResponseUtil[T]:
         @ResponseUtil[User](i18n_summary=UserI18n.API_CREATE)
         async def create_user():
             # 不需要写 try... except
-            # 返回 pydantic 模型实例，或者任意数据（None/bool/str/dict等），不能返回非数据对象（如文件对象）
+            # 返回 pydantic 模型实例，或者任意数据（None/bool/str/dict等），
+            # 不能返回非数据对象（如文件对象）
             return User(id=1, name='张三')
 
     """
@@ -162,13 +85,18 @@ class ResponseUtil[T]:
         - 正常返回时，应返回一个结果值作为data，返回 success（code=0）。
 
         发生错误时依次捕获：
-            - 发生 ResultWaringException 时，直接根据该错误承载的 i18n 信息返回 waring（code=2）。
-            - 发生 AppException 时，直接根据该错误承载的 i18n 信息返回 error（code=1）。
-            - 发生其他 Exception 时，返回 error（code=1），记录日志，返回固定格式的国际化。
+            - 发生 ResultWaringException 时，
+              直接根据该错误承载的 i18n 信息返回 waring（code=2）。
+            - 发生 AppException 时，
+              直接根据该错误承载的 i18n 信息返回 error（code=1）。
+            - 发生其他 Exception 时，
+              返回 error（code=1），记录日志，返回固定格式的国际化。
 
         :param i18n_summary: 接口操作名称的国际化对象
         """
-        assert isinstance(i18n_summary, I18nMessage), "i18n_summary 参数必须是 I18nMessage 对象"
+        assert isinstance(i18n_summary, I18nMessage), (
+            "i18n_summary 参数必须是 I18nMessage 对象"
+        )
         self.i18n_summary = i18n_summary
         self.__lang = ""
         self.__summary = ""
@@ -197,6 +125,30 @@ class ResponseUtil[T]:
             self.lang, error=str(e), summary=self.summary
         )
 
+    @staticmethod
+    def _get_success_message(result: SuccessResult | Any, default_msg: str) -> str:
+        """获取成功消息
+
+        :param result: 结果对象(SuccessResult 或普通数据)
+        :param default_msg: 默认消息(当 result 无自定义消息时使用)
+        :return: 翻译后的成功消息
+        """
+        if isinstance(result, SuccessResult) and result.i18n_msg:
+            from pytuck_view.base.response import get_current_lang
+
+            lang = get_current_lang()
+            return result.i18n_msg.format(lang, **result.i18n_args)
+        return default_msg
+
+    @staticmethod
+    def _extract_data(result: SuccessResult | Any) -> Any:
+        """提取数据
+
+        :param result: 结果对象(SuccessResult 或普通数据)
+        :return: 实际数据
+        """
+        return result.data if isinstance(result, SuccessResult) else result
+
     def __call__(
         self, func: Callable[..., T | Coroutine[Any, Any, T]]
     ) -> Callable[..., ApiResponse | Coroutine[Any, Any, ApiResponse]]:
@@ -208,7 +160,9 @@ class ResponseUtil[T]:
             async def async_wrapper(*args, **kwargs) -> ApiResponse:
                 try:
                     result = await func(*args, **kwargs)
-                    return self.success(data=result)
+                    data = self._extract_data(result)
+                    msg = self._get_success_message(result, "success")
+                    return self.success(data=data, msg=msg)
                 except ResultWarningException as e:
                     return self.warning(msg=self.translate_exception(e), data=e.data)
                 except AppException as e:
@@ -226,11 +180,13 @@ class ResponseUtil[T]:
         def wrapper(*args, **kwargs):
             try:
                 result = func(*args, **kwargs)
-                return self.success(data=result)
+                data = self._extract_data(result)
+                msg = self._get_success_message(result, "success")
+                return self.success(data=data, msg=msg)
             except ResultWarningException as e:
                 return self.warning(msg=self.translate_exception(e), data=e.data)
             except AppException as e:
-                return self.error(msg=self.translate_exception(e), data=e.data)
+                return self.fail(msg=self.translate_exception(e), data=e.data)
             except Exception as e:
                 logger.error(
                     f"{self.summary} 发生预期之外的错误：\n{simplify_exception(e)}"

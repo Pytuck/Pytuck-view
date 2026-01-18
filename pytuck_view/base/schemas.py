@@ -9,11 +9,13 @@
 - HTTP status 仍按语义返回（由路由决定）
 """
 
-from datetime import datetime
 import uuid
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+from pytuck_view.utils.schemas import I18nMessage
 
 
 class FileRecord(BaseModel):
@@ -37,28 +39,47 @@ class ApiResponse[T](BaseModel):
     data: T | None = Field(None, description="响应数据")
 
 
-def ok[T](data: T | None = None, msg: str = "OK") -> ApiResponse[T]:
-    """成功响应（code=0）。"""
-
-    return ApiResponse(code=0, msg=msg, data=data)
-
-
-def fail[T](msg: str, data: T | None = None, code: int = 1) -> ApiResponse[T]:
-    """失败响应（默认 code=1）。"""
-
-    return ApiResponse(code=code, msg=msg, data=data)
-
-
-def warn[T](msg: str, data: T | None = None) -> ApiResponse[T]:
-    """警告响应（code=2）。"""
-
-    return ApiResponse(code=2, msg=msg, data=data)
-
-
 class Empty(BaseModel):
     """用于显式声明 data 为空对象的响应。"""
 
     pass
+
+
+class SuccessResult[T]:
+    """成功结果包装器
+
+    用于在 ResponseUtil 装饰器中返回自定义的成功消息。
+
+    示例::
+
+        @ResponseUtil(i18n_summary=ApiSummaryI18n.GET_TABLES)
+        async def get_tables(file_id: str) -> dict:
+            tables = db_service.list_tables()
+            if has_placeholder(tables):
+                return SuccessResult(
+                    data={"tables": tables},
+                    i18n_msg=DatabaseI18n.GET_TABLES_WITH_PLACEHOLDER
+                )
+            return SuccessResult(
+                data={"tables": tables}
+            )
+    """
+
+    def __init__(
+        self,
+        data: T,
+        i18n_msg: I18nMessage | None = None,
+        **i18n_args: Any,
+    ):
+        """初始化成功结果
+
+        :param data: 返回数据
+        :param i18n_msg: 自定义成功消息(国际化对象),为 None 时使用默认成功消息
+        :param i18n_args: 消息格式化参数
+        """
+        self.data = data
+        self.i18n_msg = i18n_msg
+        self.i18n_args = i18n_args
 
 
 class PageInfo(BaseModel):
