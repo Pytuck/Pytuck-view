@@ -19,7 +19,12 @@ packages = ["pytuck_view", "pytuck_view.api", "pytuck_view.base", "pytuck_view.s
 include-package-data = true
 
 [tool.setuptools.package-data]
-"*" = ["static/*", "static/**/*"]
+# 仅包含必需的静态资源，排除运行时生成的翻译文件
+pytuck_view = [
+    "static/*.html",
+    "static/*.css",
+    "static/*.js",
+]
 
 [dependency-groups]
 # uv dev 依赖组（PEP 735）：仅用于开发/CI，不进入运行时依赖链
