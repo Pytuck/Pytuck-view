@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from .utils.logger import logger
 from .api import router as api_router
 from .base.middleware import language_context_middleware
 
@@ -19,14 +20,14 @@ def create_app() -> FastAPI:
     """创建并配置 FastAPI 应用"""
 
     # 在应用启动时生成前端翻译文件
-    from pytuck_view.base.frontend_i18n import generate_all_locales
     from pytuck_view import __version__
+    from pytuck_view.base.frontend_i18n import generate_all_locales
 
     try:
         locales_dir = Path(__file__).parent / "static" / "locales"
         generate_all_locales(locales_dir)
     except Exception as e:
-        print(f"警告: 生成前端翻译文件失败: {e}")
+        logger.warning(f"警告: 生成前端翻译文件失败: {e}")
         # 不影响应用启动,继续执行
 
     app = FastAPI(
