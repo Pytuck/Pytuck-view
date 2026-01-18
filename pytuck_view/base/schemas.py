@@ -64,22 +64,14 @@ class SuccessResult[T](BaseModel):
     """
 
     data: T = Field(..., description="响应数据")
-    i18n_msg: I18nMessage | None = None
+    i18n_msg: I18nMessage | None = Field(None, description="国际化消息")
     i18n_args: dict[str, Any] = Field(default_factory=dict)
 
 
-class PageInfo(BaseModel):
-    """分页信息（用于列表接口的通用描述）。"""
+class PageData[T](BaseModel):
+    """分页数据容器（不强制 rows 的具体结构，避免热路径过重校验）。"""
 
     page: int = Field(1, ge=1, description="页码，从 1 开始")
     limit: int = Field(50, ge=1, le=1000, description="每页数量")
     total: int = Field(0, ge=0, description="总数量")
-
-
-class PageData(BaseModel):
-    """分页数据容器（不强制 rows 的具体结构，避免热路径过重校验）。"""
-
-    page: int
-    limit: int
-    total: int
-    rows: list[dict[str, Any]]
+    rows: list[T] = Field(default_factory=list, description="数据列表")
