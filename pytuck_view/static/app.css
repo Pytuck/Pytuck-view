@@ -743,3 +743,59 @@ body {
         flex-wrap: wrap;
     }
 }
+/* ========== 语言切换器样式 ========== */
+.language-switcher {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.language-switcher button {
+    background: var(--bg-secondary, #f5f5f5);
+    border: 2px solid transparent;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.language-switcher button:hover:not(:disabled) {
+    background: var(--bg-hover, #e0e0e0);
+    transform: scale(1.05);
+}
+
+.language-switcher button.active {
+    border-color: var(--primary-color, #007bff);
+    background: var(--bg-active, #e7f3ff);
+}
+
+.language-switcher button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 加载覆盖层 */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    background: white;
+    padding: 20px 40px;
+    border-radius: 8px;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

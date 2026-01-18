@@ -199,6 +199,31 @@
 </head>
 <body>
     <div id="app">
+        <!-- 语言切换器(右上角) -->
+        <div class="language-switcher">
+            <button
+                @click="switchLocale('zh_cn')"
+                :class="{ active: locale === 'zh_cn' }"
+                :disabled="isLoadingLocale"
+                :title="t('language.chinese')"
+            >
+                🇨🇳
+            </button>
+            <button
+                @click="switchLocale('en_us')"
+                :class="{ active: locale === 'en_us' }"
+                :disabled="isLoadingLocale"
+                :title="t('language.english')"
+            >
+                🇺🇸
+            </button>
+        </div>
+
+        <!-- 加载指示器 -->
+        <div v-if="isLoadingLocale" class="loading-overlay">
+            <div class="loading-spinner">{{ t('common.loading') }}</div>
+        </div>
+
         <!-- 文件选择器页面 -->
         <div v-if="state.currentPage === 'file-selector'" class="file-selector">
             <header class="header">
@@ -220,13 +245,13 @@
 
             <div class="quick-actions">
                 <button @click="openFileBrowser" class="btn btn-primary" :disabled="state.loading">
-                    📁 浏览目录
+                    📁 {{ t('file.browseDirectory') }}
                 </button>
             </div>
 
             <!-- 历史文件（卡片） -->
             <section v-if="state.recentFiles.length > 0" class="file-section">
-                <h2>📋 历史文件</h2>
+                <h2>📋 {{ t('file.recentFiles') }}</h2>
                 <div class="file-cards">
                     <div v-for="file in state.recentFiles" :key="file.file_id" class="file-card" @click="openFile(file.path)">
                         <div class="file-card-header">
@@ -478,10 +503,113 @@
     <script src="/static/vue.min.js"></script>
 
     <script>
-        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+        // ========== 前端国际化管理器 ==========
+        const i18n = {
+            locale: 'zh_cn',
+            messages: {},  // 翻译字典(从 JSON 加载)
+            loading: false,
+            loaded: new Set(),  // 已加载的语言
+
+            // 翻译方法
+            t(key) {
+                return this.messages[key] || key;
+            },
+
+            // 加载指定语言的翻译
+            async loadLocale(locale) {
+                if (this.loaded.has(locale)) {
+                    return;  // 已加载,跳过
+                }
+
+                this.loading = true;
+                try {
+                    const response = await fetch(`/static/locales/${locale}.json`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const translations = await response.json();
+                    this.messages = translations;
+                    this.loaded.add(locale);
+                    console.log(`✓ 已加载语言: ${locale} (${Object.keys(translations).length} 个翻译)`);
+                } catch (error) {
+                    console.error(`加载语言失败: ${locale}`, error);
+                    // 回退到默认语言
+                    if (locale !== 'zh_cn') {
+                        await this.loadLocale('zh_cn');
+                    }
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            // 切换语言
+            async setLocale(locale) {
+                await this.loadLocale(locale);
+                this.locale = locale;
+                localStorage.setItem('pytuck-view-locale', locale);
+            },
+
+            // 初始化
+            async init() {
+                // 从 localStorage 读取偏好
+                const saved = localStorage.getItem('pytuck-view-locale');
+                if (saved) {
+                    await this.loadLocale(saved);
+                    this.locale = saved;
+                } else {
+                    // 从浏览器语言推断
+                    const browserLang = navigator.language || navigator.userLanguage;
+                    if (browserLang.startsWith('zh')) {
+                        await this.loadLocale('zh_cn');
+                        this.locale = 'zh_cn';
+                    } else if (browserLang.startsWith('en')) {
+                        await this.loadLocale('en_us');
+                        this.locale = 'en_us';
+                    } else {
+                        // 默认中文
+                        await this.loadLocale('zh_cn');
+                        this.locale = 'zh_cn';
+                    }
+                }
+            }
+        };
+
+        // 在页面加载时初始化
+        i18n.init();
+
+        // ========== Vue 应用 ==========
+        const { createApp, ref, reactive, computed, onMounted, nextTick, watch } = Vue;
 
         createApp({
             setup() {
+                // i18n 响应式状态
+                const locale = ref(i18n.locale);
+                const isLoadingLocale = ref(i18n.loading);
+
+                // 翻译函数
+                const t = (key) => i18n.t(key);
+
+                // 切换语言
+                const switchLocale = async (newLocale) => {
+                    if (newLocale === locale.value) return;
+
+                    isLoadingLocale.value = true;
+                    await i18n.setLocale(newLocale);
+                    locale.value = newLocale;
+                    isLoadingLocale.value = false;
+
+                    // 切换后重新加载数据(如果有打开的文件)
+                    if (state.currentDatabase) {
+                        await loadTables();
+                    }
+                };
+
+                // 监听语言变化,更新 HTML lang 属性
+                watch(locale, (newLocale) => {
+                    const langAttr = newLocale === 'zh_cn' ? 'zh-CN' : 'en-US';
+                    document.documentElement.setAttribute('lang', langAttr);
+                });
+
                 // 响应式数据
                 const state = reactive({
                     currentPage: 'file-selector', // 'file-selector', 'database-view'
@@ -561,6 +689,7 @@
                         const response = await fetch(`/api${path}`, {
                             headers: {
                                 'Content-Type': 'application/json',
+                                'X-Language': i18n.locale,  // 自动注入当前语言
                                 ...options.headers
                             },
                             ...options
@@ -867,6 +996,12 @@
                 });
 
                 return {
+                    // i18n
+                    locale,
+                    isLoadingLocale,
+                    t,
+                    switchLocale,
+                    // 应用状态
                     state,
                     fileBrowser,
                     totalPages,
