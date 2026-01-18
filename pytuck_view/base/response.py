@@ -6,7 +6,7 @@
 import functools
 from collections.abc import Callable, Coroutine
 from inspect import iscoroutinefunction
-from typing import Any, TypeVar
+from typing import Any
 
 from pytuck_view.base.context import current_context
 from pytuck_view.base.exceptions import (
@@ -18,8 +18,6 @@ from pytuck_view.base.schemas import ApiResponse, SuccessResult
 from pytuck_view.utils.logger import logger
 from pytuck_view.utils.schemas import I18nMessage
 from pytuck_view.utils.tiny_func import simplify_exception
-
-T = TypeVar("T")
 
 
 def get_current_lang() -> str:

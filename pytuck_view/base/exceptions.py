@@ -51,15 +51,6 @@ class ServiceException(AppException):
     pass
 
 
-class ValidationException(AppException):
-    """验证警告（code=2）
-
-    用于表示验证失败或需要用户注意的警告信息。
-    """
-
-    pass
-
-
 class ResultWarningException(AppException):
     """结果警告（code=2）
 
