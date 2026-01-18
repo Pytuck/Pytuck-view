@@ -20,6 +20,7 @@ def create_app() -> FastAPI:
 
     # 在应用启动时生成前端翻译文件
     from pytuck_view.base.frontend_i18n import generate_all_locales
+    from pytuck_view import __version__
 
     try:
         locales_dir = Path(__file__).parent / "static" / "locales"
@@ -31,7 +32,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="pytuck-view",
         description="轻量级 pytuck 数据库可视化工具",
-        version="25.1.0",
+        version=__version__,
         docs_url=None,  # 禁用自动文档以减小体积
         redoc_url=None,
     )
