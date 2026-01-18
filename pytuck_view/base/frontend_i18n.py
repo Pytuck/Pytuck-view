@@ -32,12 +32,14 @@ class CommonUI:
     LOADING = FrontendI18nMessage(zh_cn="加载中...", en_us="Loading...")
     ERROR = FrontendI18nMessage(zh_cn="错误", en_us="Error")
     SUCCESS = FrontendI18nMessage(zh_cn="成功", en_us="Success")
+    YES = FrontendI18nMessage(zh_cn="是", en_us="Yes")
+    NO = FrontendI18nMessage(zh_cn="否", en_us="No")
     SEARCH = FrontendI18nMessage(zh_cn="搜索", en_us="Search")
     FILTER = FrontendI18nMessage(zh_cn="过滤", en_us="Filter")
     REFRESH = FrontendI18nMessage(zh_cn="刷新", en_us="Refresh")
     SELECT_DATABASE_HINT = FrontendI18nMessage(
         zh_cn="选择一个 pytuck 数据库文件开始浏览",
-        en_us="Select a pytuck database file to start browsing"
+        en_us="Select a pytuck database file to start browsing",
     )
     BACK = FrontendI18nMessage(zh_cn="返回", en_us="Back")
     TABLES_COUNT = FrontendI18nMessage(zh_cn="张表", en_us="tables")
@@ -80,8 +82,7 @@ class TableUI:
     )
     DATA_TABLES = FrontendI18nMessage(zh_cn="数据表", en_us="Data Tables")
     SELECT_TABLE_HINT = FrontendI18nMessage(
-        zh_cn="选择一个表开始浏览",
-        en_us="Select a table to start browsing"
+        zh_cn="选择一个表开始浏览", en_us="Select a table to start browsing"
     )
     ROWS_COUNT = FrontendI18nMessage(zh_cn="行数据", en_us="rows")
     TAB_STRUCTURE = FrontendI18nMessage(zh_cn="结构", en_us="Structure")
@@ -137,8 +138,10 @@ def generate_locale_json(locale: str) -> dict[str, str]:
             if isinstance(attr_value, FrontendI18nMessage):
                 # 将大写字母转换为小写,生成 camelCase key
                 # APP_TITLE -> appTitle, BROWSE_DIRECTORY -> browseDirectory
-                key_parts = attr_name.split('_')
-                camel_name = key_parts[0].lower() + ''.join(word.capitalize() for word in key_parts[1:])
+                key_parts = attr_name.split("_")
+                camel_name = key_parts[0].lower() + "".join(
+                    word.capitalize() for word in key_parts[1:]
+                )
                 key = f"{prefix}.{camel_name}"
                 # 获取对应语言的翻译
                 translation = getattr(attr_value, locale)

@@ -362,7 +362,7 @@
                                             </td>
                                             <td class="col-type-cell">{{ col.type }}</td>
                                             <td class="col-nullable-cell">
-                                                {{ col.nullable !== false ? '是' : '否' }}
+                                                {{ col.nullable !== false ? t('common.yes') : t('common.no') }}
                                             </td>
                                             <td class="col-pk-cell">
                                                 <span v-if="col.primary_key" class="pk-badge">🔑</span>
