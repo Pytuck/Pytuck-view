@@ -62,6 +62,7 @@ class SuccessResult[T](BaseModel):
                 )
             return SuccessResult(data={"tables": tables})
     """
+
     data: T = Field(..., description="响应数据")
     i18n_msg: I18nMessage | None = None
     i18n_args: dict[str, Any] = Field(default_factory=dict)

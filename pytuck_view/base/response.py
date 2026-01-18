@@ -112,7 +112,7 @@ class ResponseUtil[T]:
     def summary(self):
         """获取 summary"""
         if not self.__summary:
-            self.__summary = self.i18n_summary.get(self.lang)
+            self.__summary = self.i18n_summary.get_template(self.lang)
         return self.__summary
 
     def translate_exception(self, e: AppException) -> str:
