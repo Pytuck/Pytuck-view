@@ -123,20 +123,11 @@ class ResponseUtil[T]:
             self.lang, error=str(e), summary=self.summary
         )
 
-    @staticmethod
-    def _get_success_message(result: SuccessResult | Any, default_msg: str) -> str:
-        """获取成功消息
-
-        :param result: 结果对象(SuccessResult 或普通数据)
-        :param default_msg: 默认消息(当 result 无自定义消息时使用)
-        :return: 翻译后的成功消息
-        """
+    def translate_success_message(self, result: SuccessResult | Any) -> str:
+        """获取成功消息"""
         if isinstance(result, SuccessResult) and result.i18n_msg:
-            from pytuck_view.base.response import get_current_lang
-
-            lang = get_current_lang()
-            return result.i18n_msg.format(lang, **result.i18n_args)
-        return default_msg
+            return result.i18n_msg.format(self.lang, **result.i18n_args)
+        return 'success'
 
     @staticmethod
     def _extract_data(result: SuccessResult | Any) -> Any:
@@ -159,7 +150,7 @@ class ResponseUtil[T]:
                 try:
                     result = await func(*args, **kwargs)
                     data = self._extract_data(result)
-                    msg = self._get_success_message(result, "success")
+                    msg = self.translate_success_message(result)
                     return self.success(data=data, msg=msg)
                 except ResultWarningException as e:
                     return self.warning(msg=self.translate_exception(e), data=e.data)
@@ -179,7 +170,7 @@ class ResponseUtil[T]:
             try:
                 result = func(*args, **kwargs)
                 data = self._extract_data(result)
-                msg = self._get_success_message(result, "success")
+                msg = self.translate_success_message(result)
                 return self.success(data=data, msg=msg)
             except ResultWarningException as e:
                 return self.warning(msg=self.translate_exception(e), data=e.data)
