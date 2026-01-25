@@ -11,6 +11,7 @@
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
@@ -35,10 +36,10 @@ _current_file_lock = asyncio.Lock()
 @router.get(
     "/recent-files",
     summary="获取最近打开的文件列表",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.GET_RECENT_FILES)
-async def get_recent_files() -> dict:
+async def get_recent_files() -> dict[str, Any]:
     """获取最近打开的文件列表"""
     recent_files = file_manager.get_recent_files(limit=10)
     files_data = [f.model_dump() for f in recent_files]
@@ -48,13 +49,15 @@ async def get_recent_files() -> dict:
 @router.get(
     "/discover-files",
     summary="发现指定目录中的 pytuck 文件",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.DISCOVER_FILES)
-async def discover_files(directory: str | None = Query(None)) -> SuccessResult[dict]:
+async def discover_files(
+    directory: str | None = Query(None),
+) -> SuccessResult[dict[str, Any]]:
     """发现指定目录中的 pytuck 文件"""
     discovered = file_manager.discover_files(directory)
-    return SuccessResult(data={"files": discovered})
+    return SuccessResult(data={"files": discovered}, i18n_msg=None)
 
 
 class OpenFileBody(BaseModel):
@@ -64,10 +67,10 @@ class OpenFileBody(BaseModel):
 @router.post(
     "/open-file",
     summary="打开数据库文件",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.OPEN_FILE)
-async def open_file(request: OpenFileBody) -> SuccessResult[dict]:
+async def open_file(request: OpenFileBody) -> SuccessResult[dict[str, Any]]:
     """打开数据库文件"""
     file_record = file_manager.open_file(request.path)
     if not file_record:
@@ -84,7 +87,7 @@ async def open_file(request: OpenFileBody) -> SuccessResult[dict]:
     tables = db_service.list_tables()
     tables_count = len(tables)
 
-    data = {
+    data: dict[str, Any] = {
         "file_id": file_record.file_id,
         "name": file_record.name,
         "path": file_record.path,
@@ -145,38 +148,40 @@ async def delete_recent_file(file_id: str) -> SuccessResult[Empty]:
 @router.get(
     "/user-home",
     summary="获取用户主目录",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.GET_USER_HOME)
-async def get_user_home() -> SuccessResult[dict]:
+async def get_user_home() -> SuccessResult[dict[str, Any]]:
     """获取用户主目录路径"""
     home = str(Path.home())
-    return SuccessResult(data={"home": home})
+    return SuccessResult(data={"home": home}, i18n_msg=None)
 
 
 @router.get(
     "/last-browse-directory",
     summary="获取最后浏览的目录",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.GET_LAST_BROWSE_DIRECTORY)
-async def get_last_browse_directory() -> SuccessResult[dict]:
+async def get_last_browse_directory() -> SuccessResult[dict[str, Any]]:
     """获取最后浏览的目录，为空则返回当前工作目录"""
     last_dir = file_manager.get_last_browse_directory()
     if not last_dir or not Path(last_dir).exists():
         # 使用当前工作目录作为默认
         last_dir = str(Path.cwd())
 
-    return SuccessResult(data={"directory": last_dir})
+    return SuccessResult(data={"directory": last_dir}, i18n_msg=None)
 
 
 @router.get(
     "/browse-directory",
     summary="浏览目录内容",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.BROWSE_DIRECTORY)
-async def browse_directory(path: str | None = Query(None)) -> SuccessResult[dict]:
+async def browse_directory(
+    path: str | None = Query(None),
+) -> SuccessResult[dict[str, Any]]:
     """浏览指定目录的文件和子目录
 
     Args:
@@ -240,4 +245,4 @@ async def browse_directory(path: str | None = Query(None)) -> SuccessResult[dict
     except Exception:
         pass  # 记录失败不影响响应
 
-    return SuccessResult(data={"path": str(target), "entries": entries})
+    return SuccessResult(data={"path": str(target), "entries": entries}, i18n_msg=None)

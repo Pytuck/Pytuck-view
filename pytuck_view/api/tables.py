@@ -16,10 +16,10 @@ router = APIRouter()
 @router.get(
     "/tables/{file_id}",
     summary="获取指定数据库的表列表",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.GET_TABLES)
-async def get_tables(file_id: str) -> SuccessResult[dict]:
+async def get_tables(file_id: str) -> SuccessResult[dict[str, Any]]:
     """获取指定数据库的表列表(包含备注信息)"""
     if file_id not in db_services:
         raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
@@ -28,7 +28,7 @@ async def get_tables(file_id: str) -> SuccessResult[dict]:
     table_names = db_service.list_tables()
 
     # 获取每个表的元数据(名称和备注)
-    tables_with_metadata = []
+    tables_with_metadata: list[dict[str, Any]] = []
     for table_name in table_names:
         table_info = db_service.get_table_info(table_name)
         tables_with_metadata.append({
@@ -43,16 +43,21 @@ async def get_tables(file_id: str) -> SuccessResult[dict]:
             i18n_msg=DatabaseI18n.GET_TABLES_WITH_PLACEHOLDER,
         )
 
-    return SuccessResult(data={"tables": tables_with_metadata, "has_placeholder": False})
+    return SuccessResult(
+        data={"tables": tables_with_metadata, "has_placeholder": False},
+        i18n_msg=None,
+    )
 
 
 @router.get(
     "/schema/{file_id}/{table_name}",
     summary="获取表结构信息",
-    response_model=ApiResponse[dict],
+    response_model=ApiResponse[dict[str, Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.GET_TABLE_SCHEMA)
-async def get_table_schema(file_id: str, table_name: str) -> SuccessResult[dict]:
+async def get_table_schema(
+    file_id: str, table_name: str
+) -> SuccessResult[dict[str, Any]]:
     """获取表结构信息"""
     if file_id not in db_services:
         raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
@@ -63,7 +68,7 @@ async def get_table_schema(file_id: str, table_name: str) -> SuccessResult[dict]
     if not table_info:
         raise ServiceException(DatabaseI18n.TABLE_NOT_EXISTS, table_name=table_name)
 
-    data = {
+    data: dict[str, Any] = {
         "table_name": table_info.name,
         "row_count": table_info.row_count,
         "columns": table_info.columns,
@@ -78,13 +83,13 @@ async def get_table_schema(file_id: str, table_name: str) -> SuccessResult[dict]
             data=data, i18n_msg=DatabaseI18n.GET_SCHEMA_WITH_PLACEHOLDER
         )
 
-    return SuccessResult(data=data)
+    return SuccessResult(data=data, i18n_msg=None)
 
 
 @router.get(
     "/rows/{file_id}/{table_name}",
     summary="获取表数据（分页，支持过滤）",
-    response_model=ApiResponse[PageData],
+    response_model=ApiResponse[PageData[Any]],
 )
 @ResponseUtil(i18n_summary=ApiSummaryI18n.GET_TABLE_ROWS)
 async def get_table_rows(
@@ -95,7 +100,7 @@ async def get_table_rows(
     limit: int = Query(50, ge=1, le=1000, description="每页行数，最大 1000"),
     sort: str | None = Query(None, description="排序字段"),
     order: str = Query("asc", pattern="^(asc|desc)$", description="排序方向"),
-) -> SuccessResult[PageData]:
+) -> SuccessResult[PageData[Any]]:
     """获取表数据（分页，支持过滤）"""
     if file_id not in db_services:
         raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
@@ -111,7 +116,7 @@ async def get_table_rows(
         filters=filters,
     )
 
-    payload = PageData(
+    payload: PageData[Any] = PageData(
         page=int(raw.get("page", page)),
         limit=int(raw.get("limit", limit)),
         total=int(raw.get("total", 0)),
