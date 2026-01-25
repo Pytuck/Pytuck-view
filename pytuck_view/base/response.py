@@ -51,22 +51,22 @@ class ResponseUtil[T]:
     """
 
     @staticmethod
-    def success[R](data: R | None = None, msg="success") -> ApiResponse[R]:
+    def success(data: Any = None, msg: str = "success") -> ApiResponse[Any]:
         """成功响应"""
         return ApiResponse(data=data, msg=msg, code=0)
 
     @staticmethod
-    def fail[R](msg: str, code=1, data: R | None = None) -> ApiResponse[R]:
+    def fail(msg: str, code: int = 1, data: Any = None) -> ApiResponse[Any]:
         """失败响应"""
         return ApiResponse(msg=msg, code=code, data=data)
 
     @staticmethod
-    def warning[R](msg: str, code=2, data: R | None = None) -> ApiResponse[R]:
+    def warning(msg: str, code: int = 2, data: Any = None) -> ApiResponse[Any]:
         """警告响应"""
         return ApiResponse(msg=msg, code=code, data=data)
 
     @staticmethod
-    def error[R](msg: str, code=-1, data: R | None = None) -> ApiResponse[R]:
+    def error(msg: str, code: int = -1, data: Any = None) -> ApiResponse[Any]:
         """错误响应
 
         :param msg: 消息内容
@@ -76,7 +76,7 @@ class ResponseUtil[T]:
         """
         return ApiResponse(msg=msg, code=code, data=data)
 
-    def __init__(self, i18n_summary: I18nMessage):
+    def __init__(self, i18n_summary: I18nMessage) -> None:
         """
         返回结果装饰器，将返回值统一为ApiResponse。
 
@@ -96,22 +96,16 @@ class ResponseUtil[T]:
             "i18n_summary 参数必须是 I18nMessage 对象"
         )
         self.i18n_summary = i18n_summary
-        self.__lang = ""
-        self.__summary = ""
 
     @property
     def lang(self) -> str:
-        """获取当前语言"""
-        if not self.__lang:
-            self.__lang = get_current_lang()
-        return self.__lang
+        """获取当前语言（每次请求时实时获取，不缓存）"""
+        return get_current_lang()
 
     @property
-    def summary(self):
-        """获取 summary"""
-        if not self.__summary:
-            self.__summary = self.i18n_summary.get_template(self.lang)
-        return self.__summary
+    def summary(self) -> str:
+        """获取 summary（每次请求时实时获取，不缓存）"""
+        return self.i18n_summary.get_template(self.lang)
 
     def translate_exception(self, e: AppException) -> str:
         """异常消息翻译方法"""
@@ -123,14 +117,14 @@ class ResponseUtil[T]:
             self.lang, error=str(e), summary=self.summary
         )
 
-    def translate_success_message(self, result: SuccessResult | Any) -> str:
+    def translate_success_message(self, result: SuccessResult[Any] | Any) -> str:
         """获取成功消息"""
         if isinstance(result, SuccessResult) and result.i18n_msg:
             return result.i18n_msg.format(self.lang, **result.i18n_args)
-        return 'success'
+        return "success"
 
     @staticmethod
-    def _extract_data(result: SuccessResult | Any) -> Any:
+    def _extract_data(result: SuccessResult[Any] | Any) -> Any:
         """提取数据
 
         :param result: 结果对象(SuccessResult 或普通数据)
@@ -138,15 +132,15 @@ class ResponseUtil[T]:
         """
         return result.data if isinstance(result, SuccessResult) else result
 
-    def __call__(
-        self, func: Callable[..., T | Coroutine[Any, Any, T]]
-    ) -> Callable[..., ApiResponse | Coroutine[Any, Any, ApiResponse]]:
+    def __call__[**P](
+        self, func: Callable[P, Coroutine[Any, Any, Any]]
+    ) -> Callable[P, Coroutine[Any, Any, ApiResponse[Any]]]:
         """装饰器主逻辑：自动实现国际化、错误捕获、日志记录"""
         # 异步方法
         if iscoroutinefunction(func):
 
             @functools.wraps(func)
-            async def async_wrapper(*args, **kwargs) -> ApiResponse:
+            async def async_wrapper(*args: Any, **kwargs: Any) -> ApiResponse[Any]:
                 try:
                     result = await func(*args, **kwargs)
                     data = self._extract_data(result)
@@ -166,7 +160,7 @@ class ResponseUtil[T]:
 
         # 同步方法
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> ApiResponse[Any]:
             try:
                 result = func(*args, **kwargs)
                 data = self._extract_data(result)
@@ -182,4 +176,4 @@ class ResponseUtil[T]:
                 )
                 return self.error(self.translate_unexpected_error(e))
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]

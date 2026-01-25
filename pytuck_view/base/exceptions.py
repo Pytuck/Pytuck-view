@@ -21,7 +21,9 @@ class AppException(Exception):
         )
     """
 
-    def __init__(self, i18n_msg: I18nMessage, data: Any = None, **format_args):
+    def __init__(
+        self, i18n_msg: I18nMessage, data: Any = None, **format_args: Any
+    ) -> None:
         """初始化异常
 
         :param i18n_msg: 国际化消息对象

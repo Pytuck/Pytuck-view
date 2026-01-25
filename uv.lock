@@ -535,11 +535,11 @@ wheels = [
 
 [[package]]
 name = "pytuck"
-version = "0.3.0"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b0/40/5d97b952a57c357d4a60097d874f3d253f9f34bb93a231eabc6fa9a1a3ec/pytuck-0.3.0.tar.gz", hash = "sha256:40e3174fcc1ccb8aacafd5cbde4f5b1dc1cff2eb48daa071872cdfe790573f7e", size = 105453, upload-time = "2026-01-13T17:33:31.869Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/6b/e6b3c3ada1d70e5413b7bf62281072e9f1483fb78805863e049dd7e8d98f/pytuck-0.5.0.tar.gz", hash = "sha256:83a6d9a2acb56bb87344279a87a9ede9691b45bb74c0e4a8318308a742e34c5e", size = 148023, upload-time = "2026-01-25T11:08:39.46Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/35/46de26f8b12ef94fda64765b301aec42321fbcf88220a4c75261c25e8409/pytuck-0.3.0-py3-none-any.whl", hash = "sha256:b510c83a8530a5493ea0c581f52c098da3cfac2afa29795aa4479c985429b8a6", size = 91293, upload-time = "2026-01-13T17:33:30.5Z" },
+    { url = "https://files.pythonhosted.org/packages/68/6f/b4a0670296f98fc3939a2eacec9f5464cc33d3fff1b29d5850e6ad2533b5/pytuck-0.5.0-py3-none-any.whl", hash = "sha256:027a8d17c7ab8b88a6ea73ebbaf922c4b21fd40f065e2719b1cde711f1afd04e", size = 132711, upload-time = "2026-01-25T11:08:37.807Z" },
 ]
 
 [package.optional-dependencies]
@@ -579,7 +579,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pytuck", extras = ["all"], specifier = ">=0.3.0" },
+    { name = "pytuck", extras = ["all"], specifier = ">=0.5.0" },
     { name = "uvicorn", specifier = ">=0.20.0" },
 ]
 

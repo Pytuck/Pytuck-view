@@ -70,6 +70,11 @@ class FileI18n:
         zh_cn="文件不存在: {path}", en_us="File not found: {path}"
     )
 
+    INVALID_DATABASE_FILE = I18nMessage(
+        zh_cn="不是有效的 pytuck 数据库文件: {path}",
+        en_us="Not a valid pytuck database file: {path}",
+    )
+
     CANNOT_OPEN_FILE = I18nMessage(zh_cn="无法打开文件", en_us="Cannot open file")
 
     OPEN_FILE_FAILED = I18nMessage(

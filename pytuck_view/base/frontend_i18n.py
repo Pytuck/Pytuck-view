@@ -4,10 +4,11 @@
 应用启动时自动生成 JSON 文件到 static/locales/。
 """
 
+from typing import Any
+
 from pytuck_view.utils.schemas import I18nMessage
 
-
-ALL_UI_CLASSES: list[type['BaseUIClass']] = []
+ALL_UI_CLASSES: list[type["BaseUIClass"]] = []
 
 
 class BaseUIClass:
@@ -16,7 +17,8 @@ class BaseUIClass:
     所有包含前端翻译文本的类都应继承此基类，
     以便自动被收集到翻译生成流程中。
     """
-    def __init_subclass__(cls, **kwargs):
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         ALL_UI_CLASSES.append(cls)
         super().__init_subclass__(**kwargs)
 
@@ -122,4 +124,19 @@ class LanguageUI(BaseUIClass):
     SWITCH_LANGUAGE = I18nMessage(zh_cn="切换语言", en_us="Switch Language")
     CHINESE = I18nMessage(zh_cn="简体中文", en_us="Simplified Chinese")
     ENGLISH = I18nMessage(zh_cn="英文", en_us="English")
+
+
+class ErrorUI(BaseUIClass):
+    """错误消息 UI 文本"""
+
+    OPEN_FILE_FAILED = I18nMessage(
+        zh_cn="打开文件失败", en_us="Failed to open file"
+    )
+    REMOVE_FAILED = I18nMessage(zh_cn="移除失败", en_us="Failed to remove")
+    CANNOT_OPEN_FILE_BROWSER = I18nMessage(
+        zh_cn="无法打开文件浏览器", en_us="Cannot open file browser"
+    )
+    LOAD_TABLE_DATA_FAILED = I18nMessage(
+        zh_cn="加载表数据失败", en_us="Failed to load table data"
+    )
 

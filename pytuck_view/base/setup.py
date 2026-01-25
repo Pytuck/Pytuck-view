@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 
 from pytuck_view.base.frontend_i18n import ALL_UI_CLASSES
-from pytuck_view.utils.schemas import I18nMessage
 from pytuck_view.utils.logger import logger
+from pytuck_view.utils.schemas import I18nMessage
 
 
 def generate_locale_json(locale: str) -> dict[str, str]:
@@ -63,7 +63,7 @@ def generate_all_locales(output_dir: Path) -> None:
         logger.info(f"✓ 生成前端翻译: {locale}.json ({len(translations)} 个)")
 
 
-def setup_all(root_path: Path):
+def setup_all(root_path: Path) -> None:
     """前置操作"""
 
     try:

@@ -42,7 +42,7 @@ def _parse_language(request: Request) -> str:
 
 async def language_context_middleware(
     request: Request,
-    call_next: Callable[[Request], Coroutine[..., ..., Response]],
+    call_next: Callable[[Request], Coroutine[object, object, Response]],
 ) -> Response:
     """语言中间件"""
     context_info = ContextInfo(language=_parse_language(request))
