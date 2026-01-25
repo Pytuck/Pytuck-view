@@ -109,7 +109,7 @@ uv run --group build python -m build --wheel
 pip install twine
 
 # 上传到 PyPI
-twine upload dist/pytuck-view-*.whl
+twine upload dist/pytuck_view-*.whl
 
 # 或上传到 TestPyPI（测试用）
 twine upload --repository testpypi dist/pytuck-view-*.whl
