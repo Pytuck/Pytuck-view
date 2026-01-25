@@ -50,8 +50,8 @@ def create_app() -> FastAPI:
     # 根路径路由 - 返回静态主页面
     static_index = current_dir / "static" / "index.html"
 
-    @app.get("/", response_class=FileResponse)
-    async def home():
+    @app.get("/", response_class=FileResponse, response_model=None)
+    async def home() -> FileResponse | HTMLResponse:
         """返回静态主页面"""
         if static_index.exists():
             return FileResponse(str(static_index))
@@ -73,7 +73,7 @@ def create_app() -> FastAPI:
 
     # 健康检查端点
     @app.get("/health")
-    async def health_check():
+    async def health_check() -> dict[str, str]:
         """健康检查端点"""
         return {"status": "ok", "service": "pytuck-view"}
 
