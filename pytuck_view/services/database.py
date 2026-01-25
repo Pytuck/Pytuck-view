@@ -38,10 +38,190 @@ class ColumnInfo:
     primary_key: bool
 
 
+# ========== 列提取辅助函数 ==========
+
+
+def _extract_column_from_object(col_name: str, col_obj: Any) -> dict[str, Any]:
+    """从列对象中提取列信息（字典格式的列定义）"""
+    return {
+        "name": str(col_name),
+        "type": str(
+            getattr(col_obj, "col_type", getattr(col_obj, "type", "unknown"))
+        ),
+        "nullable": bool(getattr(col_obj, "nullable", True)),
+        "primary_key": bool(getattr(col_obj, "primary_key", False)),
+        "default_value": (
+            str(getattr(col_obj, "default", None))
+            if getattr(col_obj, "default", None) is not None
+            else None
+        ),
+        "comment": (
+            str(getattr(col_obj, "comment", ""))
+            if getattr(col_obj, "comment", None)
+            else None
+        ),
+        "autoincrement": bool(getattr(col_obj, "autoincrement", False)),
+        "unique": bool(getattr(col_obj, "unique", False)),
+    }
+
+
+def _extract_column_from_dict(col_def: dict[str, Any]) -> dict[str, Any]:
+    """从字典中提取列信息（数组格式的列定义）"""
+    return {
+        "name": str(col_def.get("name", "unknown")),
+        "type": str(col_def.get("type", "unknown")),
+        "nullable": bool(col_def.get("nullable", True)),
+        "primary_key": bool(col_def.get("primary_key", False)),
+        "default_value": (
+            str(col_def.get("default")) if col_def.get("default") is not None else None
+        ),
+        "comment": (
+            str(col_def.get("comment", "")) if col_def.get("comment") else None
+        ),
+        "autoincrement": bool(col_def.get("autoincrement", False)),
+        "unique": bool(col_def.get("unique", False)),
+    }
+
+
+def _extract_columns_from_table(table: Any) -> list[dict[str, Any]]:
+    """从表对象中提取所有列信息"""
+    columns: list[dict[str, Any]] = []
+
+    if not hasattr(table, "columns") or not table.columns:
+        return columns
+
+    if isinstance(table.columns, dict):
+        # 字典格式的列定义
+        for col_name, col_obj in table.columns.items():
+            columns.append(_extract_column_from_object(col_name, col_obj))
+    elif isinstance(table.columns, list):
+        # 数组格式的列定义（pytuck JSON 格式）
+        for col_def in table.columns:
+            if isinstance(col_def, dict):
+                columns.append(_extract_column_from_dict(col_def))
+
+    return columns
+
+
+def _get_row_count_from_table(
+    table: Any, storage: Storage | None, table_name: str
+) -> int:
+    """从表对象中获取行数"""
+    if hasattr(table, "records") and table.records:
+        # pytuck JSON 格式使用 records
+        return len(table.records)
+    elif hasattr(table, "data") and table.data:
+        # 其他格式使用 data
+        return len(table.data)
+    elif hasattr(storage, "count_rows") and storage is not None:
+        # 假设将来会有这个方法
+        try:
+            return int(storage.count_rows(table_name))
+        except Exception:
+            return 0
+    return 0
+
+
+def _extract_table_comment(table: Any) -> str | None:
+    """提取表备注"""
+    try:
+        if hasattr(table, "comment"):
+            return str(table.comment) if table.comment else None
+        elif isinstance(table, dict) and "comment" in table:
+            return str(table["comment"]) if table["comment"] else None
+    except Exception:
+        pass
+    return None
+
+
+# ========== 过滤器操作符处理 ==========
+
+
+_FILTER_OPERATORS: dict[str, Any] = {
+    "eq": lambda row_val, val: row_val == val,
+    "gt": lambda row_val, val: float(row_val or 0) > float(val or 0),
+    "gte": lambda row_val, val: float(row_val or 0) >= float(val or 0),
+    "lt": lambda row_val, val: float(row_val or 0) < float(val or 0),
+    "lte": lambda row_val, val: float(row_val or 0) <= float(val or 0),
+    "contains": lambda row_val, val: str(val).lower() in str(row_val).lower(),
+    "in": lambda row_val, val: (
+        row_val in val if isinstance(val, list) else row_val == val
+    ),
+}
+
+
+def _apply_filter_operator(op: str, row_value: Any, value: Any) -> bool:
+    """应用单个过滤器操作符"""
+    handler = _FILTER_OPERATORS.get(op)
+    if handler:
+        try:
+            return bool(handler(row_value, value))
+        except (ValueError, TypeError):
+            return False
+    return True  # 未知操作符，不过滤
+
+
+def _row_matches_filters(row: dict[str, Any], filters: list[dict[str, Any]]) -> bool:
+    """检查单行是否匹配所有过滤条件"""
+    for filter_def in filters:
+        field = filter_def.get("field")
+        op = filter_def.get("op", "eq")
+        value = filter_def.get("value")
+
+        if field not in row:
+            return False
+
+        if not _apply_filter_operator(op, row[field], value):
+            return False
+
+    return True
+
+
+# ========== 占位符数据 ==========
+
+
+def _get_placeholder_tables() -> list[str]:
+    """返回占位符表列表（当 pytuck 功能不可用时）"""
+    return [
+        "⚠️ 表列表功能暂不可用",
+        "💡 提示: 需要在 pytuck 库中添加获取表列表的方法",
+        "📋 建议方法: storage.list_tables() 或 storage.get_table_names()",
+    ]
+
+
+def _get_placeholder_columns() -> list[dict[str, Any]]:
+    """返回占位符列信息"""
+    return [
+        {
+            "name": "⚠️ 列信息不可用",
+            "type": "placeholder",
+            "nullable": True,
+            "primary_key": False,
+            "description": "需要在 pytuck 库中添加获取表结构的方法",
+        }
+    ]
+
+
+def _get_placeholder_data() -> list[dict[str, Any]]:
+    """返回占位符数据"""
+    return [
+        {
+            "id": 1,
+            "message": "⚠️ 数据查询功能暂不可用",
+            "suggestion": "需要在 pytuck 库中完善数据查询接口",
+            "methods_needed": "storage.query() 或 session.execute(select())",
+            "is_placeholder": True,
+        }
+    ]
+
+
+# ========== 数据库服务类 ==========
+
+
 class DatabaseService:
     """数据库服务"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.storage: Storage | None = None
         self.session: Session | None = None
         self.file_path: str | None = None
@@ -61,7 +241,7 @@ class DatabaseService:
             # 创建 Storage 实例
             self.storage = Storage(
                 file_path=str(path_obj),
-                engine=engine,
+                engine=engine or "binary",
                 auto_flush=False,  # 只读模式，不需要自动刷新
             )
 
@@ -83,25 +263,14 @@ class DatabaseService:
         try:
             # 尝试获取表列表
             if hasattr(self.storage, "tables"):
-                table_names = []
-                for table_name in self.storage.tables.keys():
-                    table_names.append(str(table_name))  # 确保是字符串
-                return table_names
+                return [str(name) for name in self.storage.tables.keys()]
             else:
                 # 如果 pytuck 还没有提供表列表功能，返回占位符
-                return self._get_placeholder_tables()
+                return _get_placeholder_tables()
 
         except Exception as e:
             logger.error("获取表列表失败: %s", simplify_exception(e))
-            return self._get_placeholder_tables()
-
-    def _get_placeholder_tables(self) -> list[str]:
-        """返回占位符表列表（当 pytuck 功能不可用时）"""
-        return [
-            "⚠️ 表列表功能暂不可用",
-            "💡 提示: 需要在 pytuck 库中添加获取表列表的方法",
-            "📋 建议方法: storage.list_tables() 或 storage.get_table_names()",
-        ]
+            return _get_placeholder_tables()
 
     def get_table_info(self, table_name: str) -> TableInfo | None:
         """获取表信息（模式和行数）"""
@@ -138,116 +307,30 @@ class DatabaseService:
             logger.error("获取表信息失败 %s: %s", table_name, simplify_exception(e))
             return self._get_placeholder_table_info(table_name)
 
-    def _extract_table_info(self, table, table_name: str) -> TableInfo:
+    def _extract_table_info(self, table: Any, table_name: str) -> TableInfo:
         """从 pytuck 表对象提取信息"""
-        columns = []
-
         try:
-            # 尝试获取列信息
-            if hasattr(table, "columns") and table.columns:
-                # 处理不同的列格式
-                if isinstance(table.columns, dict):
-                    # 字典格式的列定义
-                    for col_name, col_obj in table.columns.items():
-                        col_info = {
-                            "name": str(col_name),
-                            "type": str(
-                                getattr(
-                                    col_obj,
-                                    "col_type",
-                                    getattr(col_obj, "type", "unknown"),
-                                )
-                            ),
-                            "nullable": bool(getattr(col_obj, "nullable", True)),
-                            "primary_key": bool(getattr(col_obj, "primary_key", False)),
-                            "default_value": str(getattr(col_obj, "default", None))
-                            if getattr(col_obj, "default", None) is not None
-                            else None,
-                            "comment": str(getattr(col_obj, "comment", ""))
-                            if getattr(col_obj, "comment", None)
-                            else None,
-                            "autoincrement": bool(
-                                getattr(col_obj, "autoincrement", False)
-                            ),
-                            "unique": bool(getattr(col_obj, "unique", False)),
-                        }
-                        columns.append(col_info)
-                elif isinstance(table.columns, list):
-                    # 数组格式的列定义（pytuck JSON 格式）
-                    for col_def in table.columns:
-                        if isinstance(col_def, dict):
-                            col_info = {
-                                "name": str(col_def.get("name", "unknown")),
-                                "type": str(col_def.get("type", "unknown")),
-                                "nullable": bool(col_def.get("nullable", True)),
-                                "primary_key": bool(col_def.get("primary_key", False)),
-                                "default_value": str(col_def.get("default"))
-                                if col_def.get("default") is not None
-                                else None,
-                                "comment": str(col_def.get("comment", ""))
-                                if col_def.get("comment")
-                                else None,
-                                "autoincrement": bool(
-                                    col_def.get("autoincrement", False)
-                                ),
-                                "unique": bool(col_def.get("unique", False)),
-                            }
-                            columns.append(col_info)
-
-            # 尝试获取行数
-            row_count = 0
-            if hasattr(table, "records") and table.records:
-                # pytuck JSON 格式使用 records
-                row_count = len(table.records)
-            elif hasattr(table, "data") and table.data:
-                # 其他格式使用 data
-                row_count = len(table.data)
-            elif hasattr(self.storage, "count_rows"):
-                # 假设将来会有这个方法
-                try:
-                    row_count = self.storage.count_rows(table_name)
-                except Exception:
-                    row_count = 0
-
+            columns = _extract_columns_from_table(table)
+            row_count = _get_row_count_from_table(table, self.storage, table_name)
         except Exception as e:
             logger.error("提取表信息失败: %s", simplify_exception(e))
             columns = []
             row_count = 0
 
-        # 提取表备注
-        table_comment = None
-        try:
-            if hasattr(table, "comment"):
-                table_comment = str(table.comment) if table.comment else None
-            elif isinstance(table, dict) and "comment" in table:
-                table_comment = str(table["comment"]) if table["comment"] else None
-        except Exception as e:
-            logger.debug("提取表备注失败: %s", simplify_exception(e))
+        table_comment = _extract_table_comment(table)
 
         return TableInfo(
             name=table_name,
             row_count=row_count,
-            columns=columns if columns else self._get_placeholder_columns(),
+            columns=columns if columns else _get_placeholder_columns(),
             comment=table_comment,
         )
 
     def _get_placeholder_table_info(self, table_name: str) -> TableInfo:
         """返回占位符表信息"""
         return TableInfo(
-            name=table_name, row_count=0, columns=self._get_placeholder_columns()
+            name=table_name, row_count=0, columns=_get_placeholder_columns()
         )
-
-    def _get_placeholder_columns(self) -> list[dict[str, Any]]:
-        """返回占位符列信息"""
-        return [
-            {
-                "name": "⚠️ 列信息不可用",
-                "type": "placeholder",
-                "nullable": True,
-                "primary_key": False,
-                "description": "需要在 pytuck 库中添加获取表结构的方法",
-            }
-        ]
 
     def get_table_data(
         self,
@@ -263,44 +346,11 @@ class DatabaseService:
             raise RuntimeError("数据库未打开")
 
         try:
-            # 计算偏移量
-            offset = (page - 1) * limit
-
-            # 尝试调用 storage.query_table_data
-            order_desc = order.lower() == "desc"
-            result = self.storage.query_table_data(
-                table_name=table_name,
-                limit=limit,
-                offset=offset,
-                order_by=sort_by,
-                order_desc=order_desc,
-                filters=filters,
+            result = self._query_table_data(
+                table_name, page, limit, sort_by, order, filters
             )
-
-            # 解析返回结果
-            rows = []
-            total = 0
-            if isinstance(result, tuple) and len(result) >= 2:
-                # 返回 (rows, total) 格式
-                rows, total = result[:2]
-            elif isinstance(result, dict):
-                # 返回字典格式
-                rows = result.get("records", result.get("rows", []))
-                total = result.get("total_count", result.get("total", len(rows)))
-            else:
-                # 其他情况，假设返回行列表
-                rows = list(result) if result else []
-                total = len(rows)
-
-            # 序列化数据（添加防护检查）
-            serialized_rows = []
-
-            # 防护：确保 rows 不为 None
-            if rows is None:
-                rows = []
-
-            for row in rows:
-                serialized_rows.append(self._serialize_value(row))
+            rows, total = self._parse_query_result(result)
+            serialized_rows = [self._serialize_value(row) for row in rows]
 
             logger.debug(
                 "使用服务端分页查询 %s，返回 %d 行，总计 %d 行",
@@ -320,14 +370,70 @@ class DatabaseService:
         except Exception as e:
             logger.error("获取表数据失败 %s: %s", table_name, simplify_exception(e))
             return {
-                "rows": self._get_placeholder_data(),
+                "rows": _get_placeholder_data(),
                 "total": 1,
                 "page": page,
                 "limit": limit,
                 "server_side": False,
             }
 
-    def _serialize_value(self, value) -> Any:
+    def _query_table_data(
+        self,
+        table_name: str,
+        page: int,
+        limit: int,
+        sort_by: str | None,
+        order: str,
+        filters: list[dict[str, Any]] | None,
+    ) -> Any:
+        """执行表数据查询"""
+        if not isinstance(self.storage, Storage):
+            raise RuntimeError("数据库未打开")
+
+        offset = (page - 1) * limit
+        order_desc = order.lower() == "desc"
+
+        # 将 filters 转换为 pytuck 期望的格式
+        filters_dict: dict[str, Any] | None = None
+        if filters:
+            filters_dict = {
+                f.get("field", ""): f.get("value")
+                for f in filters
+                if f.get("field")
+            }
+
+        return self.storage.query_table_data(
+            table_name=table_name,
+            limit=limit,
+            offset=offset,
+            order_by=sort_by,
+            order_desc=order_desc,
+            filters=filters_dict,
+        )
+
+    def _parse_query_result(self, result: Any) -> tuple[list[Any], int]:
+        """解析查询结果，返回 (rows, total)"""
+        rows: list[Any] = []
+        total: int = 0
+
+        if isinstance(result, tuple) and len(result) >= 2:
+            # 返回 (rows, total) 格式
+            rows_data, total_data = result[:2]
+            rows = list(rows_data) if rows_data else []
+            total = int(total_data) if total_data is not None else 0
+        elif isinstance(result, dict):
+            # 返回字典格式
+            rows = list(result.get("records", result.get("rows", [])) or [])
+            total_val = result.get("total_count", result.get("total", len(rows)))
+            total = int(total_val) if total_val is not None else 0
+        else:
+            # 其他情况，假设返回行列表
+            rows = list(result) if result else []
+            total = len(rows)
+
+        return rows, total
+
+    def _serialize_value(self, value: Any) -> Any:
         """将值序列化为 JSON 兼容格式"""
         if value is None:
             return None
@@ -340,7 +446,9 @@ class DatabaseService:
             return [self._serialize_value(item) for item in value]
         elif isinstance(value, dict):
             return {
-                k: self._serialize_value(v) for k, v in value.items() if not callable(v)
+                k: self._serialize_value(v)
+                for k, v in value.items()
+                if not callable(v)
             }
         elif hasattr(value, "__dict__"):
             # 对象转字典
@@ -363,68 +471,15 @@ class DatabaseService:
         if not filters or not rows:
             return rows
 
-        filtered_rows = []
-        for row in rows:
-            matches = True
-            for filter_def in filters:
-                field = filter_def.get("field")
-                op = filter_def.get("op", "eq")
-                value = filter_def.get("value")
-
-                if field not in row:
-                    matches = False
-                    break
-
-                row_value = row[field]
-                try:
-                    if op == "eq":
-                        matches = row_value == value
-                    elif op == "gt":
-                        matches = float(row_value) > float(value)
-                    elif op == "gte":
-                        matches = float(row_value) >= float(value)
-                    elif op == "lt":
-                        matches = float(row_value) < float(value)
-                    elif op == "lte":
-                        matches = float(row_value) <= float(value)
-                    elif op == "contains":
-                        matches = str(value).lower() in str(row_value).lower()
-                    elif op == "in":
-                        matches = (
-                            row_value in value
-                            if isinstance(value, list)
-                            else row_value == value
-                        )
-                    else:
-                        matches = True  # 未知操作符，不过滤
-                except (ValueError, TypeError):
-                    matches = False  # 类型转换失败，视为不匹配
-
-                if not matches:
-                    break
-
-            if matches:
-                filtered_rows.append(row)
-
-        return filtered_rows
-
-    def _get_placeholder_data(self) -> list[dict[str, Any]]:
-        """返回占位符数据"""
-        return [
-            {
-                "id": 1,
-                "message": "⚠️ 数据查询功能暂不可用",
-                "suggestion": "需要在 pytuck 库中完善数据查询接口",
-                "methods_needed": "storage.query() 或 session.execute(select())",
-                "is_placeholder": True,
-            }
-        ]
+        return [row for row in rows if _row_matches_filters(row, filters)]
 
     def supports_server_side_pagination(self) -> bool:
         """检测 storage 或 storage.backend 是否支持服务器端分页"""
         if not isinstance(self.storage, Storage):
             return False
-        return self.storage.backend.supports_server_side_pagination()
+        if self.storage.backend is None:
+            return False
+        return bool(self.storage.backend.supports_server_side_pagination())
 
     def get_capabilities(self) -> dict[str, Any]:
         """获取数据库后端的能力信息"""
@@ -452,7 +507,7 @@ class DatabaseService:
                 "error": str(e),
             }
 
-    def close(self):
+    def close(self) -> None:
         """关闭数据库连接"""
         if self.session:
             try:
