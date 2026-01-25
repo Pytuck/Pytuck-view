@@ -14,6 +14,8 @@ from typing import Any
 
 from pytuck.backends import is_valid_pytuck_database
 
+from pytuck_view.base.exceptions import ServiceException
+from pytuck_view.base.i18n import FileI18n
 from pytuck_view.base.schemas import FileRecord
 from pytuck_view.utils.logger import logger
 from pytuck_view.utils.tiny_func import simplify_exception
@@ -106,12 +108,12 @@ class FileManager:
 
         # 检查文件是否存在
         if not path_obj.exists():
-            raise FileNotFoundError(f"文件不存在: {file_path}")
+            raise ServiceException(FileI18n.FILE_NOT_FOUND, path=file_path)
 
         # 验证文件并识别引擎
         is_valid, engine = is_valid_pytuck_database(path_obj)
         if not is_valid:
-            raise ValueError(f"不是有效的 pytuck 数据库文件: {path_obj}")
+            raise ServiceException(FileI18n.INVALID_DATABASE_FILE, path=str(path_obj))
 
         # 生成文件 ID 和记录
         file_id = str(uuid.uuid4())
