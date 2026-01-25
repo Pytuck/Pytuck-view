@@ -11,7 +11,9 @@ import sys
 import threading
 import time
 import webbrowser
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import uvicorn
 
@@ -24,14 +26,14 @@ def find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         s.listen(1)
-        port = s.getsockname()[1]
+        port: int = s.getsockname()[1]
     return port
 
 
-def open_browser(url: str, delay: float = 1.5):
+def open_browser(url: str, delay: float = 1.5) -> None:
     """延迟打开浏览器，确保服务器已启动"""
 
-    def _open():
+    def _open() -> None:
         time.sleep(delay)
         try:
             webbrowser.open(url)
@@ -43,14 +45,14 @@ def open_browser(url: str, delay: float = 1.5):
 
 
 @asynccontextmanager
-async def lifespan(app):
+async def lifespan(app: Any) -> AsyncGenerator[None, None]:
     """应用生命周期管理"""
     logger.info("🚀 pytuck-view 正在启动...")
     yield
     logger.info("👋 pytuck-view 正在关闭...")
 
 
-def main():
+def main() -> None:
     """主入口函数"""
     # 首先初始化日志系统
     init_logging()
