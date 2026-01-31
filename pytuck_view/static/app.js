@@ -196,7 +196,7 @@ function createApiClient(state) {
                 currentDatabase: null,
                 tables: [],
                 currentTable: null,
-                activeTab: 'structure',
+                activeTab: 'data',  // 默认显示数据视图
                 tableSchema: null,
                 tableData: [],
                 currentPageNum: 1,
@@ -206,7 +206,23 @@ function createApiClient(state) {
                 error: null,
                 placeholderWarning: null,
                 sortBy: null,
-                sortOrder: 'asc'
+                sortOrder: 'asc',
+                // 编辑相关状态
+                primaryKeyColumn: null,       // 当前表的主键列名
+                hasPrimaryKey: false,         // 当前表是否有主键
+                selectedRowIndex: null,       // 当前选中行索引
+                editRowIndex: null,           // 正在编辑的行索引
+                editBuffer: null,             // 编辑缓冲区
+                isAddingRow: false,           // 是否正在添加新行
+                newRowData: {},               // 新行数据
+                viewMode: 'table',            // 视图模式: 'table' | 'record'
+                // 表/列编辑状态
+                editingTableName: false,      // 是否正在编辑表名
+                editingTableComment: false,   // 是否正在编辑表备注
+                editingColumnComment: null,   // 正在编辑备注的列名
+                editTableNameValue: '',       // 表名编辑值
+                editTableCommentValue: '',    // 表备注编辑值
+                editColumnCommentValue: ''    // 列备注编辑值
             });
 
             // ========== 文件浏览器状态 ==========
@@ -349,14 +365,42 @@ function createApiClient(state) {
                     state.loading = true;
                     state.currentTable = tableName;
                     state.currentPageNum = 1;
-                    state.activeTab = 'structure';
-                    await loadTableSchema(tableName);
-                    state.tableData = [];
-                    state.totalRows = 0;
+                    state.activeTab = 'data';  // 默认显示数据视图
+                    state.viewMode = 'table';  // 重置视图模式
+                    state.selectedRowIndex = null;
+                    state.editRowIndex = null;
+                    state.editBuffer = null;
+                    state.isAddingRow = false;
+                    state.newRowData = {};
+
+                    // 并行加载表结构和数据
+                    await Promise.all([
+                        loadTableSchema(tableName),
+                        loadTableData(tableName, 1),
+                        loadPrimaryKeyInfo(tableName)
+                    ]);
+
+                    // 默认选中第一行
+                    if (state.tableData.length > 0) {
+                        state.selectedRowIndex = 0;
+                    }
                 } catch (error) {
                     state.error = `${t('error.loadTableDataFailed')}: ${error.message}`;
                 } finally {
                     state.loading = false;
+                }
+            }
+
+            async function loadPrimaryKeyInfo(tableName) {
+                if (!state.currentDatabase) return;
+                try {
+                    const data = await api(`/schema/${state.currentDatabase.file_id}/${tableName}/primary-key`);
+                    state.primaryKeyColumn = data.primary_key;
+                    state.hasPrimaryKey = data.has_primary_key;
+                } catch (error) {
+                    console.error('获取主键信息失败:', error);
+                    state.primaryKeyColumn = null;
+                    state.hasPrimaryKey = false;
                 }
             }
 
@@ -413,6 +457,281 @@ function createApiClient(state) {
                 if (page < 1 || page > totalPages.value || !state.currentTable) return;
                 state.activeTab = 'data';
                 await loadTableData(state.currentTable, page);
+                // 默认选中第一行
+                if (state.tableData.length > 0) {
+                    state.selectedRowIndex = 0;
+                }
+            }
+
+            // ========== 表/列编辑操作 ==========
+
+            function startEditTableName() {
+                state.editingTableName = true;
+                state.editTableNameValue = state.currentTable || '';
+            }
+
+            function cancelEditTableName() {
+                state.editingTableName = false;
+                state.editTableNameValue = '';
+            }
+
+            async function saveTableName() {
+                if (!state.currentDatabase || !state.currentTable) return;
+                if (!state.editTableNameValue.trim()) {
+                    state.error = '表名不能为空';
+                    return;
+                }
+                if (state.editTableNameValue === state.currentTable) {
+                    cancelEditTableName();
+                    return;
+                }
+
+                try {
+                    state.loading = true;
+                    await api(`/tables/${state.currentDatabase.file_id}/${state.currentTable}/rename`, {
+                        method: 'POST',
+                        body: JSON.stringify({ new_name: state.editTableNameValue })
+                    });
+                    const newName = state.editTableNameValue;
+                    state.currentTable = newName;
+                    cancelEditTableName();
+                    await loadTables();
+                    await loadTableSchema(newName);
+                } catch (error) {
+                    state.error = `重命名失败: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            function startEditTableComment() {
+                state.editingTableComment = true;
+                state.editTableCommentValue = state.tableSchema?.table_comment || '';
+            }
+
+            function cancelEditTableComment() {
+                state.editingTableComment = false;
+                state.editTableCommentValue = '';
+            }
+
+            async function saveTableComment() {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                try {
+                    state.loading = true;
+                    await api(`/tables/${state.currentDatabase.file_id}/${state.currentTable}/comment`, {
+                        method: 'POST',
+                        body: JSON.stringify({ comment: state.editTableCommentValue || null })
+                    });
+                    cancelEditTableComment();
+                    await loadTables();
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = `更新备注失败: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            function startEditColumnComment(columnName, currentComment) {
+                state.editingColumnComment = columnName;
+                state.editColumnCommentValue = currentComment || '';
+            }
+
+            function cancelEditColumnComment() {
+                state.editingColumnComment = null;
+                state.editColumnCommentValue = '';
+            }
+
+            async function saveColumnComment(columnName) {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                try {
+                    state.loading = true;
+                    await api(`/columns/${state.currentDatabase.file_id}/${state.currentTable}/${columnName}/comment`, {
+                        method: 'POST',
+                        body: JSON.stringify({ comment: state.editColumnCommentValue || null })
+                    });
+                    cancelEditColumnComment();
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = `更新列备注失败: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 数据行编辑操作 ==========
+
+            function selectRow(index) {
+                state.selectedRowIndex = index;
+            }
+
+            function startEditRow(index) {
+                if (!state.hasPrimaryKey) {
+                    state.error = '该表没有主键，无法编辑数据';
+                    return;
+                }
+                state.editRowIndex = index;
+                state.editBuffer = JSON.parse(JSON.stringify(state.tableData[index]));
+            }
+
+            function cancelEditRow() {
+                state.editRowIndex = null;
+                state.editBuffer = null;
+            }
+
+            async function saveEditRow() {
+                if (!state.currentDatabase || !state.currentTable || state.editBuffer === null) return;
+                if (!state.hasPrimaryKey || !state.primaryKeyColumn) {
+                    state.error = '该表没有主键，无法保存';
+                    return;
+                }
+
+                const pkValue = state.tableData[state.editRowIndex][state.primaryKeyColumn];
+
+                try {
+                    state.loading = true;
+                    await api(`/rows/${state.currentDatabase.file_id}/${state.currentTable}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ pk: pkValue, data: state.editBuffer })
+                    });
+                    cancelEditRow();
+                    await loadTableData(state.currentTable, state.currentPageNum);
+                } catch (error) {
+                    state.error = `保存失败: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            async function deleteRow(index) {
+                if (!state.currentDatabase || !state.currentTable) return;
+                if (!state.hasPrimaryKey || !state.primaryKeyColumn) {
+                    state.error = '该表没有主键，无法删除';
+                    return;
+                }
+
+                const pkValue = state.tableData[index][state.primaryKeyColumn];
+                if (!confirm(`确定要删除这条记录吗？\n主键: ${pkValue}`)) return;
+
+                try {
+                    state.loading = true;
+                    await api(`/rows/${state.currentDatabase.file_id}/${state.currentTable}`, {
+                        method: 'DELETE',
+                        body: JSON.stringify({ pk: pkValue })
+                    });
+                    await loadTableData(state.currentTable, state.currentPageNum);
+                    state.selectedRowIndex = null;
+                } catch (error) {
+                    state.error = `删除失败: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            function startAddRow() {
+                state.isAddingRow = true;
+                state.newRowData = {};
+                // 初始化默认值
+                if (state.tableSchema?.columns) {
+                    state.tableSchema.columns.forEach(col => {
+                        if (col.default_value && col.default_value !== 'None') {
+                            state.newRowData[col.name] = col.default_value;
+                        } else {
+                            state.newRowData[col.name] = '';
+                        }
+                    });
+                }
+            }
+
+            function cancelAddRow() {
+                state.isAddingRow = false;
+                state.newRowData = {};
+            }
+
+            async function saveNewRow() {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                try {
+                    state.loading = true;
+                    await api(`/rows/${state.currentDatabase.file_id}/${state.currentTable}`, {
+                        method: 'POST',
+                        body: JSON.stringify({ data: state.newRowData })
+                    });
+                    cancelAddRow();
+                    await loadTableData(state.currentTable, state.currentPageNum);
+                } catch (error) {
+                    state.error = `插入失败: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 视图模式切换 ==========
+
+            function switchViewMode(mode) {
+                state.viewMode = mode;
+                // 切换到记录视图时，确保有选中的行
+                if (mode === 'record' && state.selectedRowIndex === null && state.tableData.length > 0) {
+                    state.selectedRowIndex = 0;
+                }
+            }
+
+            function prevRecord() {
+                if (state.selectedRowIndex > 0) {
+                    state.selectedRowIndex--;
+                }
+            }
+
+            function nextRecord() {
+                if (state.selectedRowIndex < state.tableData.length - 1) {
+                    state.selectedRowIndex++;
+                }
+            }
+
+            function startEditRecord() {
+                if (!state.hasPrimaryKey) {
+                    state.error = '该表没有主键，无法编辑数据';
+                    return;
+                }
+                if (state.selectedRowIndex === null) return;
+                state.editBuffer = JSON.parse(JSON.stringify(state.tableData[state.selectedRowIndex]));
+                state.editRowIndex = state.selectedRowIndex;
+            }
+
+            function cancelEditRecord() {
+                state.editBuffer = null;
+                state.editRowIndex = null;
+            }
+
+            async function saveEditRecord() {
+                if (!state.currentDatabase || !state.currentTable || state.editBuffer === null) return;
+                if (!state.hasPrimaryKey || !state.primaryKeyColumn) {
+                    state.error = '该表没有主键，无法保存';
+                    return;
+                }
+
+                const pkValue = state.tableData[state.selectedRowIndex][state.primaryKeyColumn];
+
+                try {
+                    state.loading = true;
+                    await api(`/rows/${state.currentDatabase.file_id}/${state.currentTable}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ pk: pkValue, data: state.editBuffer })
+                    });
+                    cancelEditRecord();
+                    await loadTableData(state.currentTable, state.currentPageNum);
+                } catch (error) {
+                    state.error = `保存失败: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            async function deleteRecord() {
+                if (state.selectedRowIndex === null) return;
+                await deleteRow(state.selectedRowIndex);
             }
 
             // ========== 导航操作 ==========
@@ -447,6 +766,16 @@ function createApiClient(state) {
                 goToPath, goUp, goToBreadcrumb, selectAndOpenFile,
                 // 表操作
                 selectTable, switchToDataTab, sortTable, goToPage,
+                // 表/列编辑
+                startEditTableName, cancelEditTableName, saveTableName,
+                startEditTableComment, cancelEditTableComment, saveTableComment,
+                startEditColumnComment, cancelEditColumnComment, saveColumnComment,
+                // 数据行编辑
+                selectRow, startEditRow, cancelEditRow, saveEditRow, deleteRow,
+                startAddRow, cancelAddRow, saveNewRow,
+                // 视图模式
+                switchViewMode, prevRecord, nextRecord,
+                startEditRecord, cancelEditRecord, saveEditRecord, deleteRecord,
                 // 导航
                 backToFileSelector,
                 // 工具函数

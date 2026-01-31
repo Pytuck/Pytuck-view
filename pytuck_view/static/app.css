@@ -852,3 +852,324 @@ body {
     font-size: 14px;
     animation: spin 1s linear infinite;
 }
+
+/* ========== 编辑功能样式 ========== */
+
+/* 表名/表备注编辑行 */
+.table-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.table-name-row h2 {
+    margin: 0;
+}
+
+.table-comment-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.table-description-empty {
+    color: #999;
+}
+
+.text-muted {
+    color: #999;
+}
+
+/* 编辑输入框 */
+.edit-input {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.edit-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.edit-input-large {
+    font-size: 18px;
+    font-weight: 500;
+    padding: 8px 12px;
+}
+
+.edit-input-small {
+    padding: 4px 8px;
+    font-size: 12px;
+    width: 150px;
+}
+
+.edit-input-cell {
+    width: 100%;
+    min-width: 80px;
+    padding: 4px 6px;
+    font-size: 13px;
+}
+
+/* 图标按钮 */
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.btn-icon:hover {
+    opacity: 1;
+}
+
+.btn-icon.btn-small {
+    font-size: 12px;
+    padding: 2px;
+}
+
+.btn-icon.btn-tiny {
+    font-size: 12px;
+    padding: 2px 4px;
+}
+
+.btn-icon.btn-save {
+    color: #28a745;
+}
+
+.btn-icon.btn-cancel {
+    color: #dc3545;
+}
+
+.btn-icon.btn-danger {
+    color: #dc3545;
+}
+
+.btn-icon:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* 小按钮 */
+.btn-small {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+    border-color: #bd2130;
+}
+
+/* 无主键警告 */
+.no-pk-warning {
+    color: #dc3545;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.toolbar-warning {
+    color: #856404;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: #fff3cd;
+    border-radius: 4px;
+}
+
+/* 数据工具栏 */
+.data-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toolbar-right {
+    display: flex;
+    gap: 4px;
+}
+
+/* 新增行表单 */
+.add-row-form {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.add-row-form h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #555;
+}
+
+.add-row-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.add-row-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.add-row-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+}
+
+.add-row-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* 操作列 */
+.action-col {
+    width: 70px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 选中行和编辑行 */
+.data-table tbody tr.selected {
+    background-color: #e3f2fd;
+}
+
+.data-table tbody tr.editing {
+    background-color: #fff3cd;
+}
+
+.data-table tbody tr.selected:hover {
+    background-color: #bbdefb;
+}
+
+.data-table tbody tr.editing:hover {
+    background-color: #ffe69c;
+}
+
+/* 空数据提示 */
+.empty-data {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+/* ========== 逐条记录视图样式 ========== */
+
+.record-view {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+}
+
+.record-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 16px;
+}
+
+.record-counter {
+    font-size: 14px;
+    color: #666;
+    min-width: 100px;
+    text-align: center;
+}
+
+.record-detail {
+    margin-bottom: 16px;
+}
+
+.record-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.record-table tr {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.record-table tr:last-child {
+    border-bottom: none;
+}
+
+.record-field-name {
+    width: 200px;
+    padding: 12px;
+    background: #f8f9fa;
+    font-weight: 500;
+    color: #555;
+    text-align: right;
+    vertical-align: top;
+}
+
+.record-field-value {
+    padding: 12px;
+    color: #333;
+}
+
+.record-field-value .edit-input {
+    width: 100%;
+}
+
+.record-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .add-row-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .record-field-name {
+        width: 120px;
+        font-size: 12px;
+    }
+
+    .data-toolbar {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+}

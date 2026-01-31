@@ -143,12 +143,52 @@
                         <!-- 表信息 -->
                         <div v-if="state.tableSchema" class="table-info">
                             <div class="table-header">
-                                <h2>📊 {{ state.tableSchema.table_name }}</h2>
-                                <p v-if="state.tableSchema.table_comment" class="table-description">
-                                    {{ state.tableSchema.table_comment }}
-                                </p>
+                                <!-- 表名编辑 -->
+                                <div class="table-name-row">
+                                    <template v-if="!state.editingTableName">
+                                        <h2>📊 {{ state.tableSchema.table_name }}</h2>
+                                        <button class="btn-icon" @click="startEditTableName" title="编辑表名">✏️</button>
+                                    </template>
+                                    <template v-else>
+                                        <input
+                                            v-model="state.editTableNameValue"
+                                            class="edit-input edit-input-large"
+                                            @keyup.enter="saveTableName"
+                                            @keyup.escape="cancelEditTableName"
+                                        />
+                                        <button class="btn-icon btn-save" @click="saveTableName" title="保存">✓</button>
+                                        <button class="btn-icon btn-cancel" @click="cancelEditTableName" title="取消">✕</button>
+                                    </template>
+                                </div>
+                                <!-- 表备注编辑 -->
+                                <div class="table-comment-row">
+                                    <template v-if="!state.editingTableComment">
+                                        <p v-if="state.tableSchema.table_comment" class="table-description">
+                                            {{ state.tableSchema.table_comment }}
+                                            <button class="btn-icon btn-small" @click="startEditTableComment" title="编辑备注">✏️</button>
+                                        </p>
+                                        <p v-else class="table-description table-description-empty">
+                                            <span class="text-muted">无备注</span>
+                                            <button class="btn-icon btn-small" @click="startEditTableComment" title="添加备注">+</button>
+                                        </p>
+                                    </template>
+                                    <template v-else>
+                                        <input
+                                            v-model="state.editTableCommentValue"
+                                            class="edit-input"
+                                            placeholder="输入表备注..."
+                                            @keyup.enter="saveTableComment"
+                                            @keyup.escape="cancelEditTableComment"
+                                        />
+                                        <button class="btn-icon btn-save" @click="saveTableComment" title="保存">✓</button>
+                                        <button class="btn-icon btn-cancel" @click="cancelEditTableComment" title="取消">✕</button>
+                                    </template>
+                                </div>
                             </div>
-                            <p class="table-meta">{{ state.tableSchema.row_count }} {{ t('table.rowsCount') }}</p>
+                            <p class="table-meta">
+                                {{ state.tableSchema.row_count }} {{ t('table.rowsCount') }}
+                                <span v-if="!state.hasPrimaryKey" class="no-pk-warning">⚠️ 无主键</span>
+                            </p>
                         </div>
 
                         <!-- Tab -->
@@ -188,7 +228,21 @@
                                                 {{ col.default_value || '-' }}
                                             </td>
                                             <td class="col-comment-cell">
-                                                {{ col.comment || '-' }}
+                                                <template v-if="state.editingColumnComment !== col.name">
+                                                    <span v-if="col.comment">{{ col.comment }}</span>
+                                                    <span v-else class="text-muted">-</span>
+                                                    <button class="btn-icon btn-tiny" @click="startEditColumnComment(col.name, col.comment)" title="编辑备注">✏️</button>
+                                                </template>
+                                                <template v-else>
+                                                    <input
+                                                        v-model="state.editColumnCommentValue"
+                                                        class="edit-input edit-input-small"
+                                                        @keyup.enter="saveColumnComment(col.name)"
+                                                        @keyup.escape="cancelEditColumnComment"
+                                                    />
+                                                    <button class="btn-icon btn-tiny btn-save" @click="saveColumnComment(col.name)" title="保存">✓</button>
+                                                    <button class="btn-icon btn-tiny btn-cancel" @click="cancelEditColumnComment" title="取消">✕</button>
+                                                </template>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -198,31 +252,202 @@
 
                         <!-- 数据 Tab -->
                         <div v-else class="data-tab">
-                            <!-- 数据表格 -->
-                            <div v-if="hasData" class="data-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th v-for="col in state.tableSchema.columns" :key="col.name"
-                                                @click="sortTable(col.name)"
-                                                class="sortable">
-                                                {{ col.name }}
-                                                <span v-if="state.sortBy === col.name">
-                                                    <span v-if="state.sortOrder === 'asc'">↑</span>
-                                                    <span v-else>↓</span>
-                                                </span>
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(row, index) in state.tableData" :key="index">
-                                            <td v-for="col in state.tableSchema.columns" :key="col.name">
-                                                {{ row[col.name] }}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <!-- 工具栏 -->
+                            <div class="data-toolbar">
+                                <div class="toolbar-left">
+                                    <button class="btn btn-small" @click="startAddRow" :disabled="state.isAddingRow">
+                                        ➕ 新增行
+                                    </button>
+                                    <span v-if="!state.hasPrimaryKey" class="toolbar-warning">
+                                        ⚠️ 无主键，编辑/删除功能受限
+                                    </span>
+                                </div>
+                                <div class="toolbar-right">
+                                    <button
+                                        class="btn btn-small"
+                                        :class="{ active: state.viewMode === 'table' }"
+                                        @click="switchViewMode('table')"
+                                    >
+                                        📋 表格
+                                    </button>
+                                    <button
+                                        class="btn btn-small"
+                                        :class="{ active: state.viewMode === 'record' }"
+                                        @click="switchViewMode('record')"
+                                        :disabled="!hasData"
+                                    >
+                                        📄 逐条
+                                    </button>
+                                </div>
                             </div>
+
+                            <!-- 表格视图 -->
+                            <template v-if="state.viewMode === 'table'">
+                                <!-- 新增行表单 -->
+                                <div v-if="state.isAddingRow && state.tableSchema && state.tableSchema.columns" class="add-row-form">
+                                    <h4>新增记录</h4>
+                                    <div class="add-row-fields">
+                                        <div v-for="col in state.tableSchema.columns" :key="col.name" class="add-row-field">
+                                            <label>{{ col.name }}</label>
+                                            <input
+                                                v-model="state.newRowData[col.name]"
+                                                :placeholder="col.type"
+                                                class="edit-input"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div class="add-row-actions">
+                                        <button class="btn btn-primary btn-small" @click="saveNewRow">保存</button>
+                                        <button class="btn btn-small" @click="cancelAddRow">取消</button>
+                                    </div>
+                                </div>
+
+                                <!-- 数据表格 -->
+                                <div v-if="hasData && state.tableSchema && state.tableSchema.columns" class="data-table">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th class="action-col">操作</th>
+                                                <th v-for="col in state.tableSchema.columns" :key="col.name"
+                                                    @click="sortTable(col.name)"
+                                                    class="sortable">
+                                                    {{ col.name }}
+                                                    <span v-if="state.sortBy === col.name">
+                                                        <span v-if="state.sortOrder === 'asc'">↑</span>
+                                                        <span v-else>↓</span>
+                                                    </span>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(row, index) in state.tableData" :key="index"
+                                                :class="{
+                                                    selected: state.selectedRowIndex === index,
+                                                    editing: state.editRowIndex === index
+                                                }"
+                                                @click="selectRow(index)">
+                                                <!-- 操作列 -->
+                                                <td class="action-col">
+                                                    <template v-if="state.editRowIndex !== index">
+                                                        <button
+                                                            class="btn-icon btn-tiny"
+                                                            @click.stop="startEditRow(index)"
+                                                            :disabled="!state.hasPrimaryKey"
+                                                            title="编辑"
+                                                        >✏️</button>
+                                                        <button
+                                                            class="btn-icon btn-tiny btn-danger"
+                                                            @click.stop="deleteRow(index)"
+                                                            :disabled="!state.hasPrimaryKey"
+                                                            title="删除"
+                                                        >🗑️</button>
+                                                    </template>
+                                                    <template v-else>
+                                                        <button class="btn-icon btn-tiny btn-save" @click.stop="saveEditRow" title="保存">✓</button>
+                                                        <button class="btn-icon btn-tiny btn-cancel" @click.stop="cancelEditRow" title="取消">✕</button>
+                                                    </template>
+                                                </td>
+                                                <!-- 数据列 -->
+                                                <td v-for="col in state.tableSchema.columns" :key="col.name">
+                                                    <template v-if="state.editRowIndex !== index">
+                                                        {{ row[col.name] }}
+                                                    </template>
+                                                    <template v-else>
+                                                        <input
+                                                            v-model="state.editBuffer[col.name]"
+                                                            class="edit-input edit-input-cell"
+                                                            :disabled="col.primary_key"
+                                                        />
+                                                    </template>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- 空数据提示 -->
+                                <div v-else class="empty-data">
+                                    <p>📭 暂无数据</p>
+                                </div>
+                            </template>
+
+                            <!-- 逐条记录视图 -->
+                            <template v-else-if="state.viewMode === 'record'">
+                                <div v-if="hasData && state.selectedRowIndex !== null && state.tableSchema && state.tableSchema.columns" class="record-view">
+                                    <!-- 记录导航 -->
+                                    <div class="record-nav">
+                                        <button class="btn btn-small" @click="prevRecord" :disabled="state.selectedRowIndex === 0">
+                                            ◀ 上一条
+                                        </button>
+                                        <span class="record-counter">
+                                            第 {{ state.selectedRowIndex + 1 }} / {{ state.tableData.length }} 条
+                                        </span>
+                                        <button class="btn btn-small" @click="nextRecord" :disabled="state.selectedRowIndex >= state.tableData.length - 1">
+                                            下一条 ▶
+                                        </button>
+                                    </div>
+
+                                    <!-- 记录详情 -->
+                                    <div class="record-detail">
+                                        <table class="record-table">
+                                            <tbody>
+                                                <tr v-for="col in state.tableSchema.columns" :key="col.name">
+                                                    <th class="record-field-name">
+                                                        {{ col.name }}
+                                                        <span v-if="col.primary_key" class="pk-badge">🔑</span>
+                                                    </th>
+                                                    <td class="record-field-value">
+                                                        <template v-if="state.editRowIndex !== state.selectedRowIndex">
+                                                            {{ state.tableData[state.selectedRowIndex][col.name] }}
+                                                        </template>
+                                                        <template v-else>
+                                                            <input
+                                                                v-model="state.editBuffer[col.name]"
+                                                                class="edit-input"
+                                                                :disabled="col.primary_key"
+                                                            />
+                                                        </template>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- 记录操作 -->
+                                    <div class="record-actions">
+                                        <template v-if="state.editRowIndex !== state.selectedRowIndex">
+                                            <button
+                                                class="btn btn-primary"
+                                                @click="startEditRecord"
+                                                :disabled="!state.hasPrimaryKey"
+                                            >
+                                                ✏️ 编辑
+                                            </button>
+                                            <button
+                                                class="btn btn-danger"
+                                                @click="deleteRecord"
+                                                :disabled="!state.hasPrimaryKey"
+                                            >
+                                                🗑️ 删除
+                                            </button>
+                                        </template>
+                                        <template v-else>
+                                            <button class="btn btn-primary" @click="saveEditRecord">
+                                                ✓ 保存
+                                            </button>
+                                            <button class="btn" @click="cancelEditRecord">
+                                                ✕ 取消
+                                            </button>
+                                        </template>
+                                        <button class="btn" @click="switchViewMode('table')">
+                                            📋 返回表格
+                                        </button>
+                                    </div>
+                                </div>
+                                <div v-else class="empty-data">
+                                    <p>📭 暂无数据</p>
+                                </div>
+                            </template>
 
                             <!-- 分页 -->
                             <div v-if="totalPages > 1" class="pagination">
