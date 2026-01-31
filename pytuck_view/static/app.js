@@ -222,7 +222,14 @@ function createApiClient(state) {
                 editingColumnComment: null,   // 正在编辑备注的列名
                 editTableNameValue: '',       // 表名编辑值
                 editTableCommentValue: '',    // 表备注编辑值
-                editColumnCommentValue: ''    // 列备注编辑值
+                editColumnCommentValue: '',   // 列备注编辑值
+                // 表编辑弹窗状态
+                showTableEditModal: false,    // 是否显示表编辑弹窗
+                tableEditForm: {              // 表编辑表单数据
+                    originalName: '',
+                    name: '',
+                    comment: ''
+                }
             });
 
             // ========== 文件浏览器状态 ==========
@@ -564,6 +571,64 @@ function createApiClient(state) {
                 }
             }
 
+            // ========== 表编辑弹窗操作 ==========
+
+            function openTableEditModal(table) {
+                state.showTableEditModal = true;
+                state.tableEditForm = {
+                    originalName: table.name,
+                    name: table.name,
+                    comment: table.comment || ''
+                };
+            }
+
+            function closeTableEditModal() {
+                state.showTableEditModal = false;
+                state.tableEditForm = { originalName: '', name: '', comment: '' };
+            }
+
+            async function saveTableEdit() {
+                if (!state.currentDatabase) return;
+                const { originalName, name, comment } = state.tableEditForm;
+
+                if (!name.trim()) {
+                    state.error = t('dataEdit.tableNameRequired');
+                    return;
+                }
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+
+                    // 如果表名改变，先重命名
+                    if (name !== originalName) {
+                        await api(`/tables/${state.currentDatabase.file_id}/${originalName}/rename`, {
+                            method: 'POST',
+                            body: JSON.stringify({ new_name: name })
+                        });
+                    }
+
+                    // 更新备注（无论是否改变都更新，以简化逻辑）
+                    await api(`/tables/${state.currentDatabase.file_id}/${name}/comment`, {
+                        method: 'POST',
+                        body: JSON.stringify({ comment: comment || null })
+                    });
+
+                    // 如果当前选中的表被重命名，更新状态
+                    if (state.currentTable === originalName) {
+                        state.currentTable = name;
+                        await loadTableSchema(name);
+                    }
+
+                    closeTableEditModal();
+                    await loadTables();
+                } catch (error) {
+                    state.error = `${t('dataEdit.renameFailed')}: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
             // ========== 数据行编辑操作 ==========
 
             function selectRow(index) {
@@ -818,6 +883,8 @@ function createApiClient(state) {
                 startEditTableName, cancelEditTableName, saveTableName,
                 startEditTableComment, cancelEditTableComment, saveTableComment,
                 startEditColumnComment, cancelEditColumnComment, saveColumnComment,
+                // 表编辑弹窗
+                openTableEditModal, closeTableEditModal, saveTableEdit,
                 // 数据行编辑
                 selectRow, startEditRow, cancelEditRow, saveEditRow, deleteRow,
                 startAddRow, cancelAddRow, saveNewRow,

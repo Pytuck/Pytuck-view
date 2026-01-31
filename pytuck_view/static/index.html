@@ -133,8 +133,16 @@
                                 placeholder: table.name.startsWith('⚠️') || table.name.startsWith('💡') || table.name.startsWith('📋')
                              }"
                              @click="selectTable(table.name)">
-                            <div class="table-item-name">{{ table.name }}</div>
-                            <div v-if="table.comment" class="table-item-comment">{{ table.comment }}</div>
+                            <div class="table-item-content">
+                                <div class="table-item-name">{{ table.name }}</div>
+                                <div v-if="table.comment" class="table-item-comment">{{ table.comment }}</div>
+                            </div>
+                            <button
+                                v-if="!table.name.startsWith('⚠️') && !table.name.startsWith('💡') && !table.name.startsWith('📋')"
+                                class="table-item-edit btn-icon"
+                                @click.stop="openTableEditModal(table)"
+                                :title="t('dataEdit.edit')"
+                            >✏️</button>
                         </div>
                     </div>
                 </aside>
@@ -149,52 +157,20 @@
                         <!-- 表信息 -->
                         <div v-if="state.tableSchema" class="table-info">
                             <div class="table-header">
-                                <!-- 表名编辑 -->
-                                <div class="table-name-row">
-                                    <template v-if="!state.editingTableName">
+                                <!-- 表名+备注+行数 一行显示 -->
+                                <div class="table-header-row">
+                                    <div class="table-header-info">
                                         <h2>📊 {{ state.tableSchema.table_name }}</h2>
-                                        <button class="btn-icon" @click="startEditTableName" :title="t('dataEdit.editTableName')">✏️</button>
-                                    </template>
-                                    <template v-else>
-                                        <input
-                                            v-model="state.editTableNameValue"
-                                            class="edit-input edit-input-large"
-                                            @keyup.enter="saveTableName"
-                                            @keyup.escape="cancelEditTableName"
-                                        />
-                                        <button class="btn-icon btn-save" @click="saveTableName" :title="t('dataEdit.save')">✓</button>
-                                        <button class="btn-icon btn-cancel" @click="cancelEditTableName" :title="t('common.cancel')">✕</button>
-                                    </template>
-                                </div>
-                                <!-- 表备注编辑 -->
-                                <div class="table-comment-row">
-                                    <template v-if="!state.editingTableComment">
-                                        <p v-if="state.tableSchema.table_comment" class="table-description">
-                                            {{ state.tableSchema.table_comment }}
-                                            <button class="btn-icon btn-small" @click="startEditTableComment" :title="t('dataEdit.editComment')">✏️</button>
-                                        </p>
-                                        <p v-else class="table-description table-description-empty">
-                                            <span class="text-muted">{{ t('dataEdit.noComment') }}</span>
-                                            <button class="btn-icon btn-small" @click="startEditTableComment" :title="t('dataEdit.addComment')">+</button>
-                                        </p>
-                                    </template>
-                                    <template v-else>
-                                        <input
-                                            v-model="state.editTableCommentValue"
-                                            class="edit-input"
-                                            :placeholder="t('dataEdit.inputTableComment')"
-                                            @keyup.enter="saveTableComment"
-                                            @keyup.escape="cancelEditTableComment"
-                                        />
-                                        <button class="btn-icon btn-save" @click="saveTableComment" :title="t('dataEdit.save')">✓</button>
-                                        <button class="btn-icon btn-cancel" @click="cancelEditTableComment" :title="t('common.cancel')">✕</button>
-                                    </template>
+                                        <span v-if="state.tableSchema.table_comment" class="table-comment-inline">
+                                            ({{ state.tableSchema.table_comment }})
+                                        </span>
+                                        <span v-if="!state.hasPrimaryKey" class="no-pk-warning">⚠️ {{ t('dataEdit.noPrimaryKey') }}</span>
+                                    </div>
+                                    <div class="table-header-meta">
+                                        {{ state.tableSchema.row_count }} {{ t('table.rowsCount') }}
+                                    </div>
                                 </div>
                             </div>
-                            <p class="table-meta">
-                                {{ state.tableSchema.row_count }} {{ t('table.rowsCount') }}
-                                <span v-if="!state.hasPrimaryKey" class="no-pk-warning">⚠️ {{ t('dataEdit.noPrimaryKey') }}</span>
-                            </p>
                         </div>
 
                         <!-- Tab -->
@@ -403,8 +379,11 @@
                                             <tbody>
                                                 <tr v-for="col in state.tableSchema.columns" :key="col.name">
                                                     <th class="record-field-name">
-                                                        {{ col.name }}
-                                                        <span v-if="col.primary_key" class="pk-badge">🔑</span>
+                                                        <div class="field-name-wrapper">
+                                                            {{ col.name }}
+                                                            <span v-if="col.primary_key" class="pk-badge">🔑</span>
+                                                        </div>
+                                                        <div v-if="col.comment" class="field-comment">{{ col.comment }}</div>
                                                     </th>
                                                     <td class="record-field-value">
                                                         <template v-if="state.editRowIndex !== state.selectedRowIndex">
@@ -551,6 +530,39 @@
                     <div v-else class="file-browser-empty">
                         <p>📂 {{ t('dataEdit.emptyDir') }}</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 表编辑弹窗 -->
+        <div v-if="state.showTableEditModal" class="modal-overlay" @click.self="closeTableEditModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>{{ t('dataEdit.editTableName') }}</h3>
+                    <button class="btn-icon" @click="closeTableEditModal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>{{ t('table.tableName') }}</label>
+                        <input
+                            v-model="state.tableEditForm.name"
+                            class="edit-input"
+                            @keyup.enter="saveTableEdit"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('table.colComment') }}</label>
+                        <textarea
+                            v-model="state.tableEditForm.comment"
+                            class="edit-input"
+                            rows="3"
+                            :placeholder="t('dataEdit.inputTableComment')"
+                        ></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeTableEditModal">{{ t('common.cancel') }}</button>
+                    <button class="btn btn-primary" @click="saveTableEdit">{{ t('dataEdit.save') }}</button>
                 </div>
             </div>
         </div>
