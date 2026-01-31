@@ -1237,6 +1237,13 @@ body {
     width: 100%;
 }
 
+.record-field-value .edit-textarea {
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
 .record-actions {
     display: flex;
     justify-content: center;
@@ -1424,7 +1431,7 @@ body {
     position: fixed;
     top: 70px;
     right: 20px;
-    max-width: 400px;
+    max-width: 600px;
     padding: 12px 16px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1446,6 +1453,35 @@ body {
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.5;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.toast-actions {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.toast-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.toast-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
 }
 
 .toast-close {

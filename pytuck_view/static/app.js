@@ -184,6 +184,25 @@ function createApiClient(state) {
                 }
             };
 
+            // 复制错误消息到剪贴板
+            const copyErrorMessage = async () => {
+                if (state.error) {
+                    try {
+                        await navigator.clipboard.writeText(state.error);
+                    } catch (err) {
+                        // 降级方案：使用传统方式复制
+                        const textarea = document.createElement('textarea');
+                        textarea.value = state.error;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                    }
+                }
+            };
+
             watch(locale, (newLocale) => {
                 document.documentElement.setAttribute('lang',
                     newLocale === 'zh_cn' ? 'zh-CN' : 'en-US');
@@ -917,7 +936,7 @@ function createApiClient(state) {
             return {
                 // 国际化
                 locale, isLoadingLocale, showLanguageMenu, t,
-                switchLocale, toggleLanguageMenu, handleGlobalClick,
+                switchLocale, toggleLanguageMenu, handleGlobalClick, copyErrorMessage,
                 // 状态
                 state, fileBrowser, totalPages, hasData, breadcrumbs, canGoUp,
                 // 文件操作
