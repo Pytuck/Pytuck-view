@@ -62,9 +62,7 @@ class FileUI(BaseUIClass):
     FILE_SIZE = I18nMessage(zh_cn="文件大小", en_us="File Size")
     LAST_OPENED = I18nMessage(zh_cn="最后打开", en_us="Last Opened")
     ENGINE = I18nMessage(zh_cn="引擎", en_us="Engine")
-    NO_FILES_YET = I18nMessage(
-        zh_cn="还没有添加过文件", en_us="No files added yet"
-    )
+    NO_FILES_YET = I18nMessage(zh_cn="还没有添加过文件", en_us="No files added yet")
     SELECT_FILE_TO_VIEW = I18nMessage(
         zh_cn="请选择一个文件以查看其内容",
         en_us="Please select a file to view its content",
@@ -86,13 +84,9 @@ class TableUI(BaseUIClass):
     COLUMNS = I18nMessage(zh_cn="列", en_us="Columns")
     ROWS = I18nMessage(zh_cn="数据", en_us="Rows")
     VIEW_DATA = I18nMessage(zh_cn="查看数据", en_us="View Data")
-    FILTER_PLACEHOLDER = I18nMessage(
-        zh_cn="输入过滤条件...", en_us="Enter filter..."
-    )
+    FILTER_PLACEHOLDER = I18nMessage(zh_cn="输入过滤条件...", en_us="Enter filter...")
     NO_TABLES = I18nMessage(zh_cn="没有表", en_us="No tables")
-    LOADING_TABLES = I18nMessage(
-        zh_cn="正在加载表列表...", en_us="Loading tables..."
-    )
+    LOADING_TABLES = I18nMessage(zh_cn="正在加载表列表...", en_us="Loading tables...")
     DATA_TABLES = I18nMessage(zh_cn="数据表", en_us="Data Tables")
     SELECT_TABLE_HINT = I18nMessage(
         zh_cn="选择一个表开始浏览", en_us="Select a table to start browsing"
@@ -129,9 +123,7 @@ class LanguageUI(BaseUIClass):
 class ErrorUI(BaseUIClass):
     """错误消息 UI 文本"""
 
-    OPEN_FILE_FAILED = I18nMessage(
-        zh_cn="打开文件失败", en_us="Failed to open file"
-    )
+    OPEN_FILE_FAILED = I18nMessage(zh_cn="打开文件失败", en_us="Failed to open file")
     REMOVE_FAILED = I18nMessage(zh_cn="移除失败", en_us="Failed to remove")
     CANNOT_OPEN_FILE_BROWSER = I18nMessage(
         zh_cn="无法打开文件浏览器", en_us="Cannot open file browser"
@@ -139,4 +131,3 @@ class ErrorUI(BaseUIClass):
     LOAD_TABLE_DATA_FAILED = I18nMessage(
         zh_cn="加载表数据失败", en_us="Failed to load table data"
     )
-

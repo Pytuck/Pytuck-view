@@ -46,6 +46,20 @@ class ApiSummaryI18n:
 
     GET_TABLE_ROWS = I18nMessage(zh_cn="获取表数据", en_us="Get table rows")
 
+    RENAME_TABLE = I18nMessage(zh_cn="重命名表", en_us="Rename table")
+
+    UPDATE_TABLE_COMMENT = I18nMessage(zh_cn="更新表备注", en_us="Update table comment")
+
+    UPDATE_COLUMN_COMMENT = I18nMessage(
+        zh_cn="更新列备注", en_us="Update column comment"
+    )
+
+    INSERT_ROW = I18nMessage(zh_cn="插入行", en_us="Insert row")
+
+    UPDATE_ROW = I18nMessage(zh_cn="更新行", en_us="Update row")
+
+    DELETE_ROW = I18nMessage(zh_cn="删除行", en_us="Delete row")
+
 
 class FileI18n:
     """文件管理模块国际化"""
@@ -168,4 +182,37 @@ class DatabaseI18n:
     GET_ROWS_SUCCESS = I18nMessage(
         zh_cn="表数据获取成功({pagination})",
         en_us="Rows retrieved successfully ({pagination})",
+    )
+
+    # Schema 修改成功消息
+    RENAME_TABLE_SUCCESS = I18nMessage(
+        zh_cn="表重命名成功",
+        en_us="Table renamed successfully",
+    )
+
+    UPDATE_COMMENT_SUCCESS = I18nMessage(
+        zh_cn="备注更新成功",
+        en_us="Comment updated successfully",
+    )
+
+    # 数据行操作成功消息
+    INSERT_ROW_SUCCESS = I18nMessage(
+        zh_cn="数据插入成功",
+        en_us="Row inserted successfully",
+    )
+
+    UPDATE_ROW_SUCCESS = I18nMessage(
+        zh_cn="数据更新成功",
+        en_us="Row updated successfully",
+    )
+
+    DELETE_ROW_SUCCESS = I18nMessage(
+        zh_cn="数据删除成功",
+        en_us="Row deleted successfully",
+    )
+
+    # 数据行操作错误消息
+    NO_PRIMARY_KEY = I18nMessage(
+        zh_cn="该表没有主键，无法执行此操作",
+        en_us="This table has no primary key, cannot perform this operation",
     )
