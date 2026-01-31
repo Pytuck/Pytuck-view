@@ -321,3 +321,6 @@ class DataEditUI(BaseUIClass):
     TABLE_NAME_REQUIRED = I18nMessage(
         key="tableNameRequired", zh_cn="表名不能为空", en_us="Table name is required"
     )
+    FIELD_REQUIRED = I18nMessage(
+        key="fieldRequired", zh_cn="不能为空", en_us="is required"
+    )
