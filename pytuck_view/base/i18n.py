@@ -216,3 +216,28 @@ class DatabaseI18n:
         zh_cn="该表没有主键，无法执行此操作",
         en_us="This table has no primary key, cannot perform this operation",
     )
+
+    INSERT_FAILED = I18nMessage(
+        zh_cn="插入数据失败: {error}",
+        en_us="Insert failed: {error}",
+    )
+
+    UPDATE_FAILED = I18nMessage(
+        zh_cn="更新数据失败: {error}",
+        en_us="Update failed: {error}",
+    )
+
+    DELETE_FAILED = I18nMessage(
+        zh_cn="删除数据失败: {error}",
+        en_us="Delete failed: {error}",
+    )
+
+    RENAME_TABLE_FAILED = I18nMessage(
+        zh_cn="重命名表失败: {error}",
+        en_us="Rename table failed: {error}",
+    )
+
+    UPDATE_COMMENT_FAILED = I18nMessage(
+        zh_cn="更新备注失败: {error}",
+        en_us="Update comment failed: {error}",
+    )
