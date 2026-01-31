@@ -68,7 +68,7 @@ def check(c):
 def run(c):
     """启动开发服务器"""
     print("正在启动开发服务器...")
-    c.run("uv run uvicorn pytuck_view.app:create_app --factory --reload --port 0")
+    c.run("uv run uvicorn pytuck_view.app:create_app --factory --reload --port 54540")
 
 
 @task
