@@ -11,8 +11,8 @@ pytuck-view 是 pytuck 的轻量级数据浏览器，提供一个"一眼看完"�
 - 🎯 简洁界面，快速浏览表结构和数据
 
 **项目地址**：
-- github: [https://github.com/go9sky/pytuck-view](https://github.com/go9sky/pytuck-view)
-- gitee: [https://gitee.com/go9sky/pytuck-view](https://gitee.com/go9sky/pytuck-view)
+- github: [https://github.com/pytuck/pytuck-view](https://github.com/pytuck/pytuck-view)
+- gitee: [https://gitee.com/pytuck/pytuck-view](https://gitee.com/pytuck/pytuck-view)
 
 ## 快速开始
 
@@ -25,7 +25,7 @@ pip install pytuck-view
 
 #### 方式 2：从源码安装
 ```bash
-git clone https://github.com/go9sky/pytuck-view.git
+git clone https://github.com/pytuck/pytuck-view.git
 cd pytuck-view
 pip install -e .
 ```
@@ -52,7 +52,7 @@ python -m pytuck_view
 
 ```bash
 # 克隆项目
-git clone https://github.com/go9sky/pytuck-view.git
+git clone https://github.com/pytuck/pytuck-view.git
 cd pytuck-view
 
 # 安装 uv（如果尚未安装）
@@ -220,6 +220,6 @@ invoke clean
 
 ## 相关链接
 
-- [pytuck 主项目](https://github.com/go9sky/pytuck)
-- [问题反馈](https://github.com/go9sky/pytuck-view/issues)
+- [pytuck 主项目](https://github.com/pytuck/pytuck)
+- [问题反馈](https://github.com/pytuck/pytuck-view/issues)
 - [更新日志](CHANGELOG.md)
