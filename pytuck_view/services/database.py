@@ -13,6 +13,7 @@ from typing import Any
 
 from pytuck import Session, Storage
 from pytuck.backends import is_valid_pytuck_database
+from pytuck.common.exceptions import DuplicateKeyError
 
 from pytuck_view.base.exceptions import ServiceException
 from pytuck_view.base.i18n import DatabaseI18n, FileI18n
@@ -107,31 +108,16 @@ def _get_row_count_from_table(
     table: Any, storage: Storage | None, table_name: str
 ) -> int:
     """从表对象中获取行数"""
-    if hasattr(table, "records") and table.records:
-        # pytuck JSON 格式使用 records
-        return len(table.records)
-    elif hasattr(table, "data") and table.data:
-        # 其他格式使用 data
-        return len(table.data)
-
-    # 尝试使用 storage 的 connector 直接查询（针对 SQLite 等原生 SQL 模式）
-    if storage is not None:
+    # 优先使用 storage.count_rows（推荐方式）
+    if storage is not None and hasattr(storage, "count_rows"):
         try:
-            connector = getattr(storage, "_connector", None)
-            if connector and hasattr(connector, "execute"):
-                cursor = connector.execute(f"SELECT COUNT(*) FROM `{table_name}`")
-                result = cursor.fetchone()
-                if result:
-                    return int(result[0])
+            return storage.count_rows(table_name)
         except Exception:
             pass
 
-        # 后备方案：尝试 count_rows 方法
-        if hasattr(storage, "count_rows"):
-            try:
-                return int(storage.count_rows(table_name))
-            except Exception:
-                pass
+    # 后备方案：从 table 对象直接获取（兼容旧版本）
+    if hasattr(table, "data") and table.data:
+        return len(table.data)
 
     return 0
 
@@ -668,7 +654,7 @@ class DatabaseService:
 
         Raises:
             RuntimeError: 数据库未打开
-            ServiceException: 插入失败
+            ServiceException: 插入失败或主键重复
         """
         if not self.storage:
             raise RuntimeError("数据库未打开")
@@ -677,6 +663,12 @@ class DatabaseService:
             pk = self.storage.insert(table_name, data)
             self.storage.flush()
             return pk
+        except DuplicateKeyError as e:
+            logger.warning(f"主键重复 {table_name}: {e.pk}")
+            raise ServiceException(
+                DatabaseI18n.DUPLICATE_KEY,
+                pk=str(e.pk),
+            ) from e
         except Exception as e:
             logger.error(f"插入数据失败 {table_name}: {simplify_exception(e)}")
             raise ServiceException(

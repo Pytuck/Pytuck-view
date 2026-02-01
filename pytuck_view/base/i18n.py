@@ -217,6 +217,11 @@ class DatabaseI18n:
         en_us="This table has no primary key, cannot perform this operation",
     )
 
+    DUPLICATE_KEY = I18nMessage(
+        zh_cn="主键 '{pk}' 已存在",
+        en_us="Primary key '{pk}' already exists",
+    )
+
     INSERT_FAILED = I18nMessage(
         zh_cn="插入数据失败: {error}",
         en_us="Insert failed: {error}",
