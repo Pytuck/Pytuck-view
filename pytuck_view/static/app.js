@@ -10,7 +10,8 @@ const i18n = {
     loaded: new Set(),
 
     t(key) {
-        return this.messages[key] || key;
+        var val = this.messages[key];
+        return val !== undefined ? val : key;
     },
 
     async loadLocale(locale) {
