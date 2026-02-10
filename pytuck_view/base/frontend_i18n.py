@@ -322,6 +322,21 @@ class DataEditUI(BaseUIClass):
     TABLE_NAME_REQUIRED = I18nMessage(
         key="tableNameRequired", zh_cn="表名不能为空", en_us="Table name is required"
     )
+    DELETE_TABLE = I18nMessage(
+        key="deleteTable", zh_cn="删除表", en_us="Delete Table"
+    )
+    CONFIRM_DELETE_TABLE = I18nMessage(
+        key="confirmDeleteTable",
+        zh_cn=(
+            "确定要删除表 '{name}' 吗？"
+            "此操作不可恢复，表中所有数据将被永久删除。"
+        ),
+        en_us=(
+            "Are you sure you want to delete table '{name}'? "
+            "This action cannot be undone. "
+            "All data in this table will be permanently deleted."
+        ),
+    )
     FIELD_REQUIRED = I18nMessage(
         key="fieldRequired", zh_cn="不能为空", en_us="is required"
     )

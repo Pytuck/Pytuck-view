@@ -60,6 +60,8 @@ class ApiSummaryI18n:
 
     DELETE_ROW = I18nMessage(zh_cn="删除行", en_us="Delete row")
 
+    DROP_TABLE = I18nMessage(zh_cn="删除表", en_us="Drop table")
+
 
 class FileI18n:
     """文件管理模块国际化"""
@@ -245,4 +247,14 @@ class DatabaseI18n:
     UPDATE_COMMENT_FAILED = I18nMessage(
         zh_cn="更新备注失败: {error}",
         en_us="Update comment failed: {error}",
+    )
+
+    DROP_TABLE_SUCCESS = I18nMessage(
+        zh_cn="表删除成功",
+        en_us="Table deleted successfully",
+    )
+
+    DROP_TABLE_FAILED = I18nMessage(
+        zh_cn="删除表失败: {error}",
+        en_us="Drop table failed: {error}",
     )

@@ -371,6 +371,28 @@ async def delete_row(
     )
 
 
+@router.delete(
+    "/tables/{file_id}/{table_name}",
+    summary="删除表",
+    response_model=ApiResponse[dict[str, Any]],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.DROP_TABLE)
+async def drop_table(
+    file_id: str, table_name: str
+) -> SuccessResult[dict[str, Any]]:
+    """删除整张表（包含所有数据）"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    db_service.drop_table(table_name)
+
+    return SuccessResult(
+        data={"deleted": True, "table_name": table_name},
+        i18n_msg=DatabaseI18n.DROP_TABLE_SUCCESS,
+    )
+
+
 @router.get(
     "/schema/{file_id}/{table_name}/primary-key",
     summary="获取表主键信息",
