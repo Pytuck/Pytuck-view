@@ -7,6 +7,7 @@
 """
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from typing import Any
 from pytuck import Session, Storage
 from pytuck.backends import is_valid_pytuck_database
 from pytuck.common.exceptions import DuplicateKeyError
+from pytuck.common.options import CsvBackendOptions
 
 from pytuck_view.base.exceptions import ServiceException
 from pytuck_view.base.i18n import DatabaseI18n, FileI18n
@@ -245,6 +247,7 @@ class DatabaseService:
                 file_path=str(path_obj),
                 engine=engine or "binary",
                 auto_flush=False,  # 只读模式，不需要自动刷新
+                backend_options=None if engine != 'csv' else CsvBackendOptions(field_size_limit=sys.maxsize)
             )
 
             # 创建 Session 实例
@@ -732,5 +735,28 @@ class DatabaseService:
             logger.error(f"删除数据失败 {table_name}[{pk}]: {simplify_exception(e)}")
             raise ServiceException(
                 DatabaseI18n.DELETE_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def drop_table(self, table_name: str) -> None:
+        """删除整张表（包含所有数据）
+
+        Args:
+            table_name: 表名
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 删除失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            self.storage.drop_table(table_name)
+            self.storage.flush()
+        except Exception as e:
+            logger.error(f"删除表失败 {table_name}: {simplify_exception(e)}")
+            raise ServiceException(
+                DatabaseI18n.DROP_TABLE_FAILED,
                 error=simplify_exception(e),
             ) from e
