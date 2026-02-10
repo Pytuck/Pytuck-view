@@ -557,8 +557,11 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn" @click="closeTableEditModal">{{ t('common.cancel') }}</button>
-                    <button class="btn btn-primary" @click="saveTableEdit">{{ t('dataEdit.save') }}</button>
+                    <button class="btn btn-danger" @click="deleteTable">🗑️ {{ t('dataEdit.deleteTable') }}</button>
+                    <div class="modal-footer-right">
+                        <button class="btn" @click="closeTableEditModal">{{ t('common.cancel') }}</button>
+                        <button class="btn btn-primary" @click="saveTableEdit">{{ t('dataEdit.save') }}</button>
+                    </div>
                 </div>
             </div>
         </div>

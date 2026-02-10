@@ -1395,10 +1395,16 @@ body {
 
 .modal-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 8px;
     padding: 16px 20px;
     border-top: 1px solid #eee;
+}
+
+.modal-footer-right {
+    display: flex;
+    gap: 8px;
 }
 
 .form-group {

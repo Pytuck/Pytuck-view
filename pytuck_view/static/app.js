@@ -378,6 +378,8 @@ function createApiClient(state) {
                 try {
                     const data = await api(`/tables/${state.currentDatabase.file_id}`);
                     state.tables = data.tables || [];
+                    // 按表名排序
+                    state.tables.sort((a, b) => a.name.localeCompare(b.name));
                     if (data.has_placeholder) {
                         state.placeholderWarning = '部分功能需要 pytuck 库支持，表列表可能不完整';
                     }
@@ -643,6 +645,38 @@ function createApiClient(state) {
                     await loadTables();
                 } catch (error) {
                     state.error = `${t('dataEdit.renameFailed')}: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            async function deleteTable() {
+                if (!state.currentDatabase) return;
+                const tableName = state.tableEditForm.originalName;
+
+                const msg = t('dataEdit.confirmDeleteTable').replace('{name}', tableName);
+                if (!confirm(msg)) return;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/tables/${state.currentDatabase.file_id}/${tableName}`, {
+                        method: 'DELETE'
+                    });
+
+                    closeTableEditModal();
+
+                    // 如果删除的是当前选中的表，清空右侧内容
+                    if (state.currentTable === tableName) {
+                        state.currentTable = null;
+                        state.tableSchema = null;
+                        state.tableData = [];
+                        state.totalRows = 0;
+                    }
+
+                    await loadTables();
+                } catch (error) {
+                    state.error = `${t('dataEdit.deleteFailed')}: ${error.message}`;
                 } finally {
                     state.loading = false;
                 }
@@ -950,7 +984,7 @@ function createApiClient(state) {
                 startEditTableComment, cancelEditTableComment, saveTableComment,
                 startEditColumnComment, cancelEditColumnComment, saveColumnComment,
                 // 表编辑弹窗
-                openTableEditModal, closeTableEditModal, saveTableEdit,
+                openTableEditModal, closeTableEditModal, saveTableEdit, deleteTable,
                 // 数据行编辑
                 selectRow, startEditRow, cancelEditRow, saveEditRow, deleteRow,
                 startAddRow, cancelAddRow, saveNewRow,
