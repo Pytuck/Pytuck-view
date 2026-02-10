@@ -421,7 +421,17 @@ body {
 .content {
     flex: 1;
     padding: 20px;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.content-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .welcome {
@@ -660,18 +670,29 @@ body {
     color: #ffc107;
 }
 
+/* 数据Tab布局 */
+.data-tab {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 /* 数据表格 */
 .data-table {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    overflow: hidden;
-    margin-bottom: 20px;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
 }
 
 .data-table table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .data-table th,
@@ -679,6 +700,7 @@ body {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #eee;
+    overflow: hidden;
 }
 
 .data-table th {
@@ -686,6 +708,10 @@ body {
     font-weight: 500;
     color: #555;
     font-size: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    user-select: none;
 }
 
 .data-table th.sortable {
@@ -706,6 +732,40 @@ body {
     background-color: #f8f9fa;
 }
 
+/* 单元格内容省略 */
+.cell-content {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    cursor: pointer;
+}
+
+.cell-content.expanded {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 列宽拖拽手柄 */
+.data-table th {
+    position: relative;
+}
+
+.col-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+}
+
+.col-resize-handle:hover {
+    background: #007bff;
+    opacity: 0.3;
+}
+
 /* 分页 */
 .pagination {
     display: flex;
@@ -713,6 +773,7 @@ body {
     align-items: center;
     gap: 10px;
     padding: 20px;
+    flex-shrink: 0;
 }
 
 .pagination button {

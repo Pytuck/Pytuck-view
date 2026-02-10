@@ -141,7 +141,7 @@
                         <h2>👈 {{ t('table.selectTableHint') }}</h2>
                     </div>
 
-                    <div v-else>
+                    <div v-else class="content-body">
                         <!-- 表信息 -->
                         <div v-if="state.tableSchema" class="table-info">
                             <div class="table-header">
@@ -281,15 +281,17 @@
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th class="action-col">{{ t('dataEdit.actions') }}</th>
-                                                <th v-for="col in state.tableSchema.columns" :key="col.name"
+                                                <th class="action-col" :style="{ width: '70px' }">{{ t('dataEdit.actions') }}</th>
+                                                <th v-for="(col, colIndex) in state.tableSchema.columns" :key="col.name"
                                                     @click="sortTable(col.name)"
-                                                    class="sortable">
+                                                    class="sortable"
+                                                    :style="{ width: getColWidth(col.name) + 'px' }">
                                                     {{ col.name }}
                                                     <span v-if="state.sortBy === col.name">
                                                         <span v-if="state.sortOrder === 'asc'">↑</span>
                                                         <span v-else>↓</span>
                                                     </span>
+                                                    <span class="col-resize-handle" @mousedown.stop.prevent="startColResize($event, col.name)"></span>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -324,7 +326,9 @@
                                                 <!-- 数据列 -->
                                                 <td v-for="col in state.tableSchema.columns" :key="col.name">
                                                     <template v-if="state.editRowIndex !== index">
-                                                        {{ row[col.name] }}
+                                                        <div class="cell-content"
+                                                             :class="{ expanded: isCellExpanded(index, col.name) }"
+                                                             @click.stop="toggleCellExpand(index, col.name)">{{ row[col.name] }}</div>
                                                     </template>
                                                     <template v-else>
                                                         <input
@@ -435,7 +439,7 @@
                             </template>
 
                             <!-- 分页 -->
-                            <div v-if="totalPages > 1" class="pagination">
+                            <div v-if="totalPages >= 1" class="pagination">
                                 <button @click="goToPage(1)" :disabled="state.currentPageNum === 1">{{ t('dataEdit.firstPage') }}</button>
                                 <button @click="goToPage(state.currentPageNum - 1)" :disabled="state.currentPageNum === 1">{{ t('dataEdit.prevPage') }}</button>
                                 <span>{{ t('dataEdit.pageInfo').replace('{current}', state.currentPageNum).replace('{total}', totalPages) }}</span>

@@ -248,7 +248,13 @@ function createApiClient(state) {
                     originalName: '',
                     name: '',
                     comment: ''
-                }
+                },
+                // 单元格展开/列宽拖拽状态
+                expandedCells: {},            // { 'rowIndex-colName': true }
+                columnWidths: {},             // { colName: widthPx }
+                resizingColumn: null,         // 当前拖拽的列名
+                resizeStartX: 0,              // 拖拽起始X坐标
+                resizeStartWidth: 0           // 拖拽起始宽度
             });
 
             // ========== 文件浏览器状态 ==========
@@ -400,6 +406,8 @@ function createApiClient(state) {
                     state.editBuffer = null;
                     state.isAddingRow = false;
                     state.newRowData = {};
+                    state.expandedCells = {};
+                    state.columnWidths = {};
 
                     // 并行加载表结构和数据
                     await Promise.all([
@@ -470,6 +478,11 @@ function createApiClient(state) {
             }
 
             async function sortTable(columnName) {
+                // 拖拽列宽后跳过排序
+                if (state.resizingColumn || state._justResized) {
+                    state._justResized = false;
+                    return;
+                }
                 if (state.sortBy === columnName) {
                     state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
                 } else {
@@ -680,6 +693,48 @@ function createApiClient(state) {
                 } finally {
                     state.loading = false;
                 }
+            }
+
+            // ========== 单元格展开/列宽拖拽 ==========
+
+            function isCellExpanded(rowIndex, colName) {
+                return !!state.expandedCells[rowIndex + '-' + colName];
+            }
+
+            function toggleCellExpand(rowIndex, colName) {
+                var key = rowIndex + '-' + colName;
+                if (state.expandedCells[key]) {
+                    delete state.expandedCells[key];
+                } else {
+                    state.expandedCells[key] = true;
+                }
+            }
+
+            function getColWidth(colName) {
+                return state.columnWidths[colName] || 150;
+            }
+
+            function startColResize(event, colName) {
+                state.resizingColumn = colName;
+                state.resizeStartX = event.clientX;
+                state.resizeStartWidth = getColWidth(colName);
+
+                var onMouseMove = function(e) {
+                    if (!state.resizingColumn) return;
+                    var diff = e.clientX - state.resizeStartX;
+                    var newWidth = Math.max(50, state.resizeStartWidth + diff);
+                    state.columnWidths[colName] = newWidth;
+                };
+
+                var onMouseUp = function() {
+                    state.resizingColumn = null;
+                    state._justResized = true;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
             }
 
             // ========== 数据行验证 ==========
@@ -985,6 +1040,8 @@ function createApiClient(state) {
                 startEditColumnComment, cancelEditColumnComment, saveColumnComment,
                 // 表编辑弹窗
                 openTableEditModal, closeTableEditModal, saveTableEdit, deleteTable,
+                // 单元格展开/列宽拖拽
+                isCellExpanded, toggleCellExpand, getColWidth, startColResize,
                 // 数据行编辑
                 selectRow, startEditRow, cancelEditRow, saveEditRow, deleteRow,
                 startAddRow, cancelAddRow, saveNewRow,
