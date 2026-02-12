@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from pytuck_view.base.constants import HOME_DIR
 from pytuck_view.base.frontend_i18n import ALL_UI_CLASSES
 from pytuck_view.utils.logger import logger
 from pytuck_view.utils.schemas import I18nMessage
@@ -57,11 +58,12 @@ def generate_all_locales(output_dir: Path) -> None:
         logger.info(f"✓ 生成前端翻译: {locale}.json ({len(translations)} 个)")
 
 
-def setup_all(root_path: Path) -> None:
+def setup_all() -> None:
     """前置操作"""
 
     try:
-        locales_dir = root_path / "static" / "locales"
+        HOME_DIR.mkdir(exist_ok=True)
+        locales_dir = HOME_DIR / "locales"
         generate_all_locales(locales_dir)
     except Exception as e:
         logger.warning(f"警告: 生成前端翻译文件失败: {e}")
