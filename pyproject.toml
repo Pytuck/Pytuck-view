@@ -1,8 +1,12 @@
 [project]
 name = "pytuck-view"
 version = "0.3.0"
-description = "Add your description here"
+description = "轻量级 pytuck 数据库可视化工具 - 零配置、双击即跑"
 requires-python = ">=3.12"
+license = "MIT"
+authors = [
+    { name = "go9sky", email = "go9sky@outlook.com" },
+]
 dependencies = [
     "fastapi>=0.128.0",
     "pydantic>=2.12.5",
