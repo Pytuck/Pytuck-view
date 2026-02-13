@@ -382,17 +382,37 @@
                             <!-- 逐条记录视图 -->
                             <template v-else-if="state.viewMode === 'record'">
                                 <div v-if="hasData && state.selectedRowIndex !== null && state.tableSchema && state.tableSchema.columns" class="record-view">
-                                    <!-- 记录导航 -->
+                                    <!-- 记录导航 + 操作 -->
                                     <div class="record-nav">
-                                        <button class="btn btn-small" @click="prevRecord" :disabled="state.selectedRowIndex === 0">
-                                            ◀ {{ t('dataEdit.prevRecord') }}
-                                        </button>
-                                        <span class="record-counter">
-                                            {{ t('dataEdit.recordCounter').replace('{current}', state.selectedRowIndex + 1).replace('{total}', state.tableData.length) }}
-                                        </span>
-                                        <button class="btn btn-small" @click="nextRecord" :disabled="state.selectedRowIndex >= state.tableData.length - 1">
-                                            {{ t('dataEdit.nextRecord') }} ▶
-                                        </button>
+                                        <div class="record-nav-left">
+                                            <button class="btn btn-small" @click="prevRecord" :disabled="state.selectedRowIndex === 0">
+                                                ◀ {{ t('dataEdit.prevRecord') }}
+                                            </button>
+                                            <span class="record-counter">
+                                                {{ t('dataEdit.recordCounter').replace('{current}', state.selectedRowIndex + 1).replace('{total}', state.tableData.length) }}
+                                            </span>
+                                            <button class="btn btn-small" @click="nextRecord" :disabled="state.selectedRowIndex >= state.tableData.length - 1">
+                                                {{ t('dataEdit.nextRecord') }} ▶
+                                            </button>
+                                        </div>
+                                        <div class="record-nav-right">
+                                            <template v-if="state.editRowIndex !== state.selectedRowIndex">
+                                                <button class="btn btn-small btn-primary" @click="startEditRecord">
+                                                    ✏️ {{ t('dataEdit.edit') }}
+                                                </button>
+                                                <button class="btn btn-small btn-danger" @click="deleteRecord">
+                                                    🗑️ {{ t('dataEdit.delete') }}
+                                                </button>
+                                            </template>
+                                            <template v-else>
+                                                <button class="btn btn-small btn-primary" @click="saveEditRecord">
+                                                    ✓ {{ t('dataEdit.save') }}
+                                                </button>
+                                                <button class="btn btn-small" @click="cancelEditRecord">
+                                                    ✕ {{ t('common.cancel') }}
+                                                </button>
+                                            </template>
+                                        </div>
                                     </div>
 
                                     <!-- 记录详情 -->
@@ -432,34 +452,6 @@
                                         </table>
                                     </div>
 
-                                    <!-- 记录操作 -->
-                                    <div class="record-actions">
-                                        <template v-if="state.editRowIndex !== state.selectedRowIndex">
-                                            <button
-                                                class="btn btn-primary"
-                                                @click="startEditRecord"
-                                            >
-                                                ✏️ {{ t('dataEdit.edit') }}
-                                            </button>
-                                            <button
-                                                class="btn btn-danger"
-                                                @click="deleteRecord"
-                                            >
-                                                🗑️ {{ t('dataEdit.delete') }}
-                                            </button>
-                                        </template>
-                                        <template v-else>
-                                            <button class="btn btn-primary" @click="saveEditRecord">
-                                                ✓ {{ t('dataEdit.save') }}
-                                            </button>
-                                            <button class="btn" @click="cancelEditRecord">
-                                                ✕ {{ t('common.cancel') }}
-                                            </button>
-                                        </template>
-                                        <button class="btn" @click="switchViewMode('table')">
-                                            📋 {{ t('dataEdit.returnTableView') }}
-                                        </button>
-                                    </div>
                                 </div>
                                 <div v-else class="empty-data">
                                     <p>📭 {{ t('dataEdit.noData') }}</p>

@@ -266,9 +266,6 @@ class DataEditUI(BaseUIClass):
         zh_cn="第 {current} / {total} 条",
         en_us="Record {current} of {total}",
     )
-    RETURN_TABLE_VIEW = I18nMessage(
-        key="returnTableView", zh_cn="返回表格", en_us="Back to Table"
-    )
 
     # 分页
     FIRST_PAGE = I18nMessage(key="firstPage", zh_cn="首页", en_us="First")
