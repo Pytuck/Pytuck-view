@@ -268,8 +268,29 @@ function createApiClient(state) {
                 sidebarFilter: '',            // 搜索筛选文本
                 // 列可见性状态
                 hiddenColumns: {},            // { colName: true } 隐藏的列
-                showColumnPicker: false       // 是否显示列选择器
+                showColumnPicker: false,      // 是否显示列选择器
+                // 成功消息
+                successMessage: null,         // 成功消息（绿色 toast）
             });
+
+            // ========== 引擎转换状态 ==========
+            const convertModal = reactive({
+                visible: false,
+                file: null,                   // 选中的文件
+                availableEngines: {},         // { engine_name: is_available }
+                targetEngine: '',             // 选中的目标引擎
+                targetPath: '',               // 目标文件路径
+                converting: false,            // 是否正在转换
+            });
+
+            const ENGINE_EXTENSIONS = {
+                binary: '.ptk',
+                sqlite: '.db',
+                json: '.json',
+                csv: '.csv.zip',
+                excel: '.xlsx',
+                xml: '.xml',
+            };
 
             // ========== 文件浏览器状态 ==========
             const fileBrowser = reactive({
@@ -1135,6 +1156,71 @@ function createApiClient(state) {
                 await loadRecentFiles();
             }
 
+            // ========== 引擎转换操作 ==========
+            async function loadAvailableEngines() {
+                try {
+                    const result = await api('/available-engines');
+                    convertModal.availableEngines = result.engines || {};
+                } catch (error) {
+                    state.error = error.message;
+                }
+            }
+
+            function openConvertModal(file) {
+                convertModal.file = file;
+                convertModal.targetEngine = '';
+                convertModal.targetPath = '';
+                convertModal.visible = true;
+                convertModal.converting = false;
+                loadAvailableEngines();
+            }
+
+            function closeConvertModal() {
+                convertModal.visible = false;
+            }
+
+            function onTargetEngineChange() {
+                const file = convertModal.file;
+                if (!file || !convertModal.targetEngine) return;
+                const ext = ENGINE_EXTENSIONS[convertModal.targetEngine] || '';
+                // 提取目录和文件名
+                const sep = file.path.includes('\\') ? '\\' : '/';
+                const lastSep = file.path.lastIndexOf(sep);
+                const dir = lastSep >= 0 ? file.path.substring(0, lastSep) : '';
+                const stem = file.name;
+                convertModal.targetPath = dir + sep + stem + ext;
+            }
+
+            async function startConvert() {
+                const { file, targetEngine, targetPath } = convertModal;
+                if (!file || !targetEngine || !targetPath) return;
+                convertModal.converting = true;
+                try {
+                    const result = await api('/convert-engine', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            source_path: file.path,
+                            source_engine: file.engine_name,
+                            target_engine: targetEngine,
+                            target_path: targetPath,
+                        })
+                    });
+                    closeConvertModal();
+                    // 显示成功消息
+                    const msg = t('convert.convertSuccess')
+                        .replace('{tables}', result.tables)
+                        .replace('{records}', result.records);
+                    state.successMessage = msg;
+                    setTimeout(() => { state.successMessage = null; }, 5000);
+                    // 刷新文件列表
+                    await loadRecentFiles();
+                } catch (error) {
+                    state.error = `${t('convert.convertFailed')}: ${error.message}`;
+                } finally {
+                    convertModal.converting = false;
+                }
+            }
+
             // ========== 生命周期 ==========
             onMounted(async () => {
                 await loadRecentFiles();
@@ -1176,6 +1262,9 @@ function createApiClient(state) {
                 startEditRecord, cancelEditRecord, saveEditRecord, deleteRecord,
                 // 导航
                 backToFileSelector,
+                // 引擎转换
+                convertModal, openConvertModal, closeConvertModal,
+                onTargetEngineChange, startConvert,
                 // 工具函数
                 formatFileSize: utils.formatFileSize,
                 formatDate: utils.formatDate

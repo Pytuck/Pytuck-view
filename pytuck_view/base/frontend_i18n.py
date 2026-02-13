@@ -378,3 +378,35 @@ class DataEditUI(BaseUIClass):
     EXPAND_SIDEBAR = I18nMessage(
         key="expandSidebar", zh_cn="展开侧边栏", en_us="Expand sidebar"
     )
+
+
+class ConvertUI(BaseUIClass):
+    """引擎转换 UI 文本"""
+
+    __i18n_prefix__ = "convert"
+
+    CONVERT_ENGINE = I18nMessage(
+        key="convertEngine", zh_cn="引擎转换", en_us="Convert Engine"
+    )
+    SOURCE_FILE = I18nMessage(key="sourceFile", zh_cn="源文件", en_us="Source File")
+    TARGET_ENGINE = I18nMessage(
+        key="targetEngine", zh_cn="目标引擎", en_us="Target Engine"
+    )
+    SAVE_PATH = I18nMessage(key="savePath", zh_cn="保存路径", en_us="Save Path")
+    START_CONVERT = I18nMessage(
+        key="startConvert", zh_cn="开始转换", en_us="Start Convert"
+    )
+    CONVERTING = I18nMessage(
+        key="converting", zh_cn="转换中...", en_us="Converting..."
+    )
+    SELECT_ENGINE = I18nMessage(
+        key="selectEngine", zh_cn="请选择目标引擎", en_us="Select target engine"
+    )
+    CONVERT_SUCCESS = I18nMessage(
+        key="convertSuccess",
+        zh_cn="转换完成：{tables} 张表，{records} 条记录",
+        en_us="Conversion completed: {tables} tables, {records} records",
+    )
+    CONVERT_FAILED = I18nMessage(
+        key="convertFailed", zh_cn="转换失败", en_us="Conversion failed"
+    )

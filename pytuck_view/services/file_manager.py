@@ -135,6 +135,28 @@ class FileManager:
 
         return file_record
 
+    def add_file_to_history(self, file_path: str) -> FileRecord:
+        """将文件添加到历史记录（不打开数据库连接）"""
+        path_obj = Path(file_path)
+
+        if not path_obj.exists():
+            raise ServiceException(FileI18n.FILE_NOT_FOUND, path=file_path)
+
+        is_valid, engine = is_valid_pytuck_database(path_obj)
+        if not is_valid:
+            raise ServiceException(FileI18n.INVALID_DATABASE_FILE, path=str(path_obj))
+
+        file_record = FileRecord(
+            file_id=str(uuid.uuid4()),
+            path=str(path_obj.absolute()),
+            name=path_obj.stem,
+            last_opened=datetime.now().isoformat(),
+            file_size=path_obj.stat().st_size,
+            engine_name=engine or "unknown",
+        )
+        self._add_to_history(file_record)
+        return file_record
+
     def _add_to_history(self, file_record: FileRecord) -> None:
         """将文件记录添加到历史记录"""
         files = self._load_recent_files()

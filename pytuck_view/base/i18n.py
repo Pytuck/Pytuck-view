@@ -64,6 +64,12 @@ class ApiSummaryI18n:
 
     UPDATE_FILE_NOTE = I18nMessage(zh_cn="更新文件备注", en_us="Update file note")
 
+    GET_AVAILABLE_ENGINES = I18nMessage(
+        zh_cn="获取可用引擎列表", en_us="Get available engines"
+    )
+
+    CONVERT_ENGINE = I18nMessage(zh_cn="引擎转换", en_us="Convert engine")
+
 
 class FileI18n:
     """文件管理模块国际化"""
@@ -263,4 +269,19 @@ class DatabaseI18n:
     DROP_TABLE_FAILED = I18nMessage(
         zh_cn="删除表失败: {error}",
         en_us="Drop table failed: {error}",
+    )
+
+
+class ConvertI18n:
+    """引擎转换相关国际化消息"""
+
+    CONVERT_SUCCESS = I18nMessage(zh_cn="转换完成", en_us="Conversion completed")
+
+    CONVERT_FAILED = I18nMessage(
+        zh_cn="转换失败: {detail}", en_us="Conversion failed: {detail}"
+    )
+
+    TARGET_FILE_EXISTS = I18nMessage(
+        zh_cn="目标文件已存在: {path}",
+        en_us="Target file already exists: {path}",
     )

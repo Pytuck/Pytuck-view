@@ -76,6 +76,7 @@
                                 <span class="file-card-name">{{ file.name }}</span>
                                 <span v-if="file.engine_name" class="engine-tag">{{ file.engine_name }}</span>
                             </div>
+                            <button class="file-card-convert" :title="t('convert.convertEngine')" @click.stop="openConvertModal(file)">🔄</button>
                             <button class="file-card-remove" :title="t('dataEdit.remove')" @click.stop="removeHistory(file.file_id)">×</button>
                         </div>
                         <div class="file-card-path">{{ file.path }}</div>
@@ -614,6 +615,55 @@
             </div>
         </div>
 
+        <!-- 引擎转换模态框 -->
+        <div v-if="convertModal.visible" class="modal-overlay" @click.self="closeConvertModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🔄 {{ t('convert.convertEngine') }}</h3>
+                    <button class="btn-icon" @click="closeConvertModal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="convert-field">
+                        <label>{{ t('convert.sourceFile') }}</label>
+                        <div class="convert-file-info">
+                            <span>{{ convertModal.file?.name }}</span>
+                            <span class="engine-tag">{{ convertModal.file?.engine_name }}</span>
+                            <span class="convert-file-size">{{ formatFileSize(convertModal.file?.file_size) }}</span>
+                        </div>
+                    </div>
+                    <div class="convert-field">
+                        <label>{{ t('convert.targetEngine') }}</label>
+                        <select v-model="convertModal.targetEngine" @change="onTargetEngineChange" class="convert-select">
+                            <option value="" disabled>{{ t('convert.selectEngine') }}</option>
+                            <template v-for="(available, engine) in convertModal.availableEngines" :key="engine">
+                                <option
+                                    v-if="engine !== convertModal.file?.engine_name"
+                                    :value="engine"
+                                    :disabled="!available">
+                                    {{ engine }}{{ !available ? ' (N/A)' : '' }}
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+                    <div v-if="convertModal.targetEngine" class="convert-field">
+                        <label>{{ t('convert.savePath') }}</label>
+                        <input type="text" v-model="convertModal.targetPath" class="convert-path-input" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div></div>
+                    <div class="modal-footer-right">
+                        <button class="btn" @click="closeConvertModal">{{ t('common.cancel') }}</button>
+                        <button class="btn btn-primary"
+                            @click="startConvert"
+                            :disabled="!convertModal.targetEngine || !convertModal.targetPath || convertModal.converting">
+                            {{ convertModal.converting ? t('convert.converting') : t('convert.startConvert') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast 消息提示框 -->
         <div v-if="state.error" class="toast toast-error">
             <div class="toast-content">{{ state.error }}</div>
@@ -624,6 +674,14 @@
                         <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                     </svg>
                 </button>
+            </div>
+        </div>
+
+        <!-- 成功消息 Toast -->
+        <div v-if="state.successMessage" class="toast toast-success">
+            <div class="toast-content">{{ state.successMessage }}</div>
+            <div class="toast-actions">
+                <button class="toast-btn" @click="state.successMessage = null" :title="t('common.close')">✕</button>
             </div>
         </div>
 

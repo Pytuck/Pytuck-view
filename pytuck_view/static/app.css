@@ -1771,6 +1771,12 @@ body {
     color: #b91c1c;
 }
 
+.toast-success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
 .toast-content {
     flex: 1;
     white-space: pre-wrap;
@@ -1831,4 +1837,78 @@ body {
         opacity: 1;
         transform: translateX(0);
     }
+}
+
+/* ========== 引擎转换按钮 ========== */
+.file-card-convert {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.file-card-convert:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+/* ========== 转换模态框内部样式 ========== */
+.convert-field {
+    margin-bottom: 16px;
+}
+
+.convert-field:last-child {
+    margin-bottom: 0;
+}
+
+.convert-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 6px;
+}
+
+.convert-file-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.convert-file-size {
+    color: #999;
+    font-size: 12px;
+}
+
+.convert-select,
+.convert-path-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.convert-select:focus,
+.convert-path-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }

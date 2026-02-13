@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from pytuck_view.base.constants import HOME_DIR
 from pytuck_view.base.exceptions import ResultWarningException, ServiceException
-from pytuck_view.base.i18n import ApiSummaryI18n, FileI18n
+from pytuck_view.base.i18n import ApiSummaryI18n, ConvertI18n, FileI18n
 from pytuck_view.base.response import ResponseUtil
 from pytuck_view.base.schemas import ApiResponse, Empty, SuccessResult
 from pytuck_view.services.database import DatabaseService
@@ -295,3 +295,71 @@ async def update_file_note(
     if not success:
         raise ResultWarningException(FileI18n.HISTORY_NOT_EXISTS)
     return SuccessResult(data=Empty(), i18n_msg=FileI18n.UPDATE_NOTE_SUCCESS)
+
+
+# ========== 引擎转换 ==========
+
+
+@router.get(
+    "/available-engines",
+    summary="获取可用引擎列表",
+    response_model=ApiResponse[dict[str, Any]],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.GET_AVAILABLE_ENGINES)
+async def available_engines() -> SuccessResult[dict[str, Any]]:
+    """获取 pytuck 支持的所有引擎及其可用状态"""
+    from pytuck.tools import get_available_engines
+
+    engines = get_available_engines()
+    return SuccessResult(data={"engines": engines}, i18n_msg=None)
+
+
+class ConvertEngineBody(BaseModel):
+    """引擎转换请求体"""
+
+    source_path: str
+    source_engine: str
+    target_engine: str
+    target_path: str
+
+
+@router.post(
+    "/convert-engine",
+    summary="引擎转换",
+    response_model=ApiResponse[dict[str, Any]],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.CONVERT_ENGINE)
+async def convert_engine(body: ConvertEngineBody) -> SuccessResult[dict[str, Any]]:
+    """将数据库文件从一种引擎格式转换为另一种"""
+    from pytuck.tools import migrate_engine
+
+    source = Path(body.source_path)
+    target = Path(body.target_path)
+
+    if not source.exists():
+        raise ServiceException(FileI18n.FILE_NOT_FOUND, path=body.source_path)
+    if target.exists():
+        raise ServiceException(ConvertI18n.TARGET_FILE_EXISTS, path=body.target_path)
+
+    try:
+        result = migrate_engine(
+            source_path=source,
+            source_engine=body.source_engine,
+            target_path=target,
+            target_engine=body.target_engine,
+        )
+    except Exception as e:
+        raise ServiceException(ConvertI18n.CONVERT_FAILED, detail=str(e)) from e
+
+    # 将新文件加入最近文件列表
+    file_record = file_manager.add_file_to_history(str(target))
+
+    return SuccessResult(
+        data={
+            "tables": result.get("tables", 0),
+            "records": result.get("records", 0),
+            "target_path": str(target),
+            "engine_name": file_record.engine_name,
+        },
+        i18n_msg=ConvertI18n.CONVERT_SUCCESS,
+    )
