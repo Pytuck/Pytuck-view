@@ -1,0 +1,7 @@
+# pytuck-view 构建依赖
+# 等效于 pyproject.toml 中的 [dependency-groups].build
+# 用法：pip install -r requirements-build.txt
+-r requirements.txt
+build>=1.0.0
+wheel>=0.42.0
+nuitka>=2.0.0
