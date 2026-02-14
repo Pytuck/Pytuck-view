@@ -2,6 +2,10 @@
 pytuck-view 开发任务脚本
 
 使用 invoke 提供跨平台的开发和构建命令。
+自动检测环境：有 uv 时通过 uv run 执行，无 uv 时直接调用工具。
+pip 用户请先安装对应的 requirements 文件：
+    pip install -r requirements-dev.txt    # 开发依赖
+    pip install -r requirements-build.txt  # 构建依赖
 
 常用命令：
     invoke fmt          - 格式化代码
@@ -21,12 +25,23 @@ from pathlib import Path
 
 from invoke import task
 
+# 检测 uv 是否可用，决定命令执行方式
+_USE_UV = shutil.which("uv") is not None
+
+
+def _cmd(cmd: str, group: str | None = None) -> str:
+    """根据环境构造命令：有 uv 时走 uv run，无 uv 时直接执行。"""
+    if _USE_UV:
+        prefix = f"uv run --group {group}" if group else "uv run"
+        return f"{prefix} {cmd}"
+    return cmd
+
 
 @task
 def fmt(c):
     """格式化代码"""
     print("正在格式化代码...")
-    c.run("uv run --group dev ruff format .")
+    c.run(_cmd("ruff format .", group="dev"))
     print("代码格式化完成")
 
 
@@ -34,21 +49,21 @@ def fmt(c):
 def lint(c):
     """代码检查"""
     print("正在运行代码检查...")
-    c.run("uv run --group dev ruff check .")
+    c.run(_cmd("ruff check .", group="dev"))
 
 
 @task
 def typecheck(c):
     """类型检查"""
     print("正在运行类型检查...")
-    c.run("uv run --group dev mypy pytuck_view")
+    c.run(_cmd("mypy pytuck_view", group="dev"))
 
 
 @task
 def test(c):
     """运行测试"""
     print("正在运行测试...")
-    c.run("uv run --group dev pytest -q")
+    c.run(_cmd("pytest -q", group="dev"))
 
 
 @task
@@ -68,14 +83,14 @@ def check(c):
 def run(c):
     """启动开发服务器"""
     print("正在启动开发服务器...")
-    c.run("uv run uvicorn pytuck_view.app:create_app --factory --reload --port 54540")
+    c.run(_cmd("uvicorn pytuck_view.app:create_app --factory --reload --port 54540"))
 
 
 @task
 def wheel(c):
     """构建 wheel 包"""
     print("正在构建 wheel 包...")
-    c.run("uv run --group build python -m build --wheel")
+    c.run(_cmd("python -m build --wheel", group="build"))
     print("\n✓ wheel 包已生成到 dist/ 目录")
 
 
@@ -90,10 +105,10 @@ def zipapp(c):
     """构建 zipapp（.pyz 单文件）"""
     print("正在构建 zipapp（.pyz）...")
     Path("dist").mkdir(exist_ok=True)
-    cmd = (
-        "uv run --group build python -m zipapp pytuck_view "
-        '-o dist/pytuck-view.pyz -p "/usr/bin/env python3"'
+    zipapp_cmd = (
+        'python -m zipapp pytuck_view -o dist/pytuck-view.pyz -p "/usr/bin/env python3"'
     )
+    cmd = _cmd(zipapp_cmd, group="build")
     c.run(cmd)
     print("\n✓ zipapp 已生成到 dist/pytuck-view.pyz")
 
@@ -104,11 +119,14 @@ def exe(c):
     print("正在使用 nuitka 构建独立可执行文件...")
     print("注意：这可能需要几分钟时间...\n")
     c.run(
-        "uv run --group build python -m nuitka "
-        "--onefile "
-        "--output-dir=dist "
-        "--output-filename=pytuck-view.exe "
-        "pytuck_view/__main__.py"
+        _cmd(
+            "python -m nuitka "
+            "--onefile "
+            "--output-dir=dist "
+            "--output-filename=pytuck-view.exe "
+            "pytuck_view/__main__.py",
+            group="build",
+        )
     )
     print("\n✓ 可执行文件已生成到 dist/pytuck-view.exe")
 
