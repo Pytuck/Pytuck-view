@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pytuck_view.base.constants import HOME_DIR
 from pytuck_view.base.exceptions import ResultWarningException, ServiceException
@@ -64,7 +64,8 @@ async def discover_files(
 
 
 class OpenFileBody(BaseModel):
-    path: str
+    """打开数据库文件请求体"""
+    path: str = Field(..., description="数据库文件本地路径")
 
 
 @router.post(
