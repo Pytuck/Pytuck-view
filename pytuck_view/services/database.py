@@ -15,7 +15,7 @@ from typing import Any
 from pytuck import Session, Storage
 from pytuck.backends import is_valid_pytuck_database
 from pytuck.common.exceptions import DuplicateKeyError
-from pytuck.common.options import CsvBackendOptions
+from pytuck.common.options import CsvBackendOptions, JsonBackendOptions
 
 from pytuck_view.base.exceptions import ServiceException
 from pytuck_view.base.i18n import DatabaseI18n, FileI18n
@@ -242,16 +242,20 @@ class DatabaseService:
                     FileI18n.INVALID_DATABASE_FILE, path=str(path_obj)
                 )
 
+            match engine:
+                case "csv":
+                    opts = CsvBackendOptions(field_size_limit=sys.maxsize)
+                case "json":
+                    opts = JsonBackendOptions(impl="orjson")
+                case _:
+                    opts = None
+
             # 创建 Storage 实例
             self.storage = Storage(
                 file_path=str(path_obj),
                 engine=engine or "binary",
                 auto_flush=False,  # 只读模式，不需要自动刷新
-                backend_options=(
-                    None
-                    if engine != "csv"
-                    else CsvBackendOptions(field_size_limit=sys.maxsize)
-                ),
+                backend_options=opts
             )
 
             # 创建 Session 实例
