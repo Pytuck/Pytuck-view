@@ -269,7 +269,8 @@ class FileManager:
         except Exception as e:
             logger.warning("更新最后浏览目录失败: %s", simplify_exception(e))
 
-    def discover_files(self, directory: str | None = None) -> list[dict[str, Any]]:
+    @staticmethod
+    def discover_files(directory: str | None = None) -> list[dict[str, Any]]:
         """在指定目录中发现 pytuck 文件"""
         target_dir = Path.cwd() / "databases" if directory is None else Path(directory)
 
