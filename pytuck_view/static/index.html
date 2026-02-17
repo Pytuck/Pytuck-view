@@ -359,7 +359,7 @@
                                                     <template v-if="state.editRowIndex !== index">
                                                         <div class="cell-content"
                                                              :class="{ expanded: isCellExpanded(index, col.name) }"
-                                                             @click.stop="toggleCellExpand(index, col.name)">{{ row[col.name] }}</div>
+                                                             @click.stop="toggleCellExpand(index, col.name)"><span v-if="row[col.name] === null || row[col.name] === undefined" class="cell-null">null</span><template v-else>{{ row[col.name] }}</template></div>
                                                     </template>
                                                     <template v-else>
                                                         <input
@@ -430,7 +430,8 @@
                                                     </th>
                                                     <td class="record-field-value">
                                                         <template v-if="state.editRowIndex !== state.selectedRowIndex">
-                                                            {{ state.tableData[state.selectedRowIndex][col.name] }}
+                                                            <span v-if="state.tableData[state.selectedRowIndex][col.name] === null || state.tableData[state.selectedRowIndex][col.name] === undefined" class="cell-null">null</span>
+                                                            <template v-else>{{ state.tableData[state.selectedRowIndex][col.name] }}</template>
                                                         </template>
                                                         <template v-else>
                                                             <textarea

@@ -1195,6 +1195,11 @@ body {
     color: #999;
 }
 
+.cell-null {
+    color: #999;
+    font-style: italic;
+}
+
 /* 编辑输入框 */
 .edit-input {
     padding: 6px 10px;
