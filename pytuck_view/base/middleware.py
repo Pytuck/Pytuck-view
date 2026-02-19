@@ -22,6 +22,7 @@ from .context import context_manager
 
 
 def _parse_language(request: Request) -> str:
+    """从请求中解析语言参数"""
     lang = request.query_params.get("lang")
     if lang:
         return lang
