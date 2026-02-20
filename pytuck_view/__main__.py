@@ -16,6 +16,7 @@ from typing import Any
 
 import uvicorn
 
+from pytuck_view import __version__
 from pytuck_view.utils.logger import init_logging, logger
 from pytuck_view.utils.tiny_func import find_available_port, simplify_exception
 
@@ -31,8 +32,8 @@ def open_browser(url: str, delay: float = 1.5) -> None:
         try:
             webbrowser.open(url)
         except Exception as e:
-            logger.warning("无法自动打开浏览器: %s", simplify_exception(e))
-            logger.info("请手动访问: %s", url)
+            logger.warning(f"无法自动打开浏览器: {simplify_exception(e)}")
+            logger.info(f"请手动访问: {url}")
 
     threading.Thread(target=_open, daemon=True).start()
 
@@ -55,8 +56,8 @@ def main() -> None:
         port = find_available_port(DEFAULT_PORT)
         url = f"http://localhost:{port}"
 
-        logger.info("📊 pytuck-view v%s", __import__("pytuck_view").__version__)
-        logger.info("🌐 服务器启动在: %s", url)
+        logger.info(f"📊 pytuck-view v{__version__}")
+        logger.info(f"🌐 服务器启动在: {url}")
         logger.info("按 Ctrl+C 停止服务器")
 
         # 延迟打开浏览器
@@ -75,7 +76,7 @@ def main() -> None:
     except KeyboardInterrupt:
         logger.info("\n✨ 感谢使用 pytuck-view!")
     except Exception as e:
-        logger.error("❌ 启动失败: %s", simplify_exception(e))
+        logger.error(f"❌ 启动失败: {simplify_exception(e)}")
         sys.exit(1)
 
 
