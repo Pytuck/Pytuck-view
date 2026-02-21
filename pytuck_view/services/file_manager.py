@@ -42,9 +42,7 @@ class FileManager:
         except Exception as e:
             # 如果无法创建配置目录，使用内存存储
             logger.warning(
-                "无法创建配置目录 %s, 将使用内存存储: %s",
-                self.config_dir,
-                simplify_exception(e),
+                f"无法创建配置目录 {self.config_dir}, 将使用内存存储。错误：{simplify_exception(e)}",
             )
             self.config_file = None
 
@@ -63,7 +61,7 @@ class FileManager:
                 else:
                     return []
         except Exception as e:
-            logger.warning("无法加载最近文件列表: %s", simplify_exception(e))
+            logger.warning(f"无法加载最近文件列表: {simplify_exception(e)}")
             return []
 
     def _save_recent_files(self, files: list[FileRecord]) -> None:
@@ -94,7 +92,7 @@ class FileManager:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.warning("无法保存最近文件列表: %s", simplify_exception(e))
+            logger.warning(f"无法保存最近文件列表: {simplify_exception(e)}")
 
     def get_recent_files(self, limit: int = 10) -> list[FileRecord]:
         """获取最近打开的文件列表"""
@@ -226,8 +224,7 @@ class FileManager:
                     pass
             except Exception as e:
                 logger.warning(
-                    "无法删除临时文件 %s: %s", temp_path, simplify_exception(e)
-                )
+                    f"无法删除临时文件 {temp_path}: {simplify_exception(e)}")
 
     def get_last_browse_directory(self) -> str | None:
         """获取最后浏览的目录"""
@@ -267,7 +264,7 @@ class FileManager:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.warning("更新最后浏览目录失败: %s", simplify_exception(e))
+            logger.warning(f"更新最后浏览目录失败: {simplify_exception(e)}")
 
     @staticmethod
     def discover_files(directory: str | None = None) -> list[dict[str, Any]]:
@@ -299,10 +296,10 @@ class FileManager:
                     )
                 except Exception as e:
                     logger.warning(
-                        "无法读取文件信息 %s: %s", file_path, simplify_exception(e)
+                        f"无法读取文件信息 {file_path}: {simplify_exception(e)}"
                     )
         except Exception as e:
-            logger.warning("无法扫描目录 %s: %s", target_dir, simplify_exception(e))
+            logger.warning(f"无法扫描目录 {target_dir}: {simplify_exception(e)}")
 
         return discovered_files
 
