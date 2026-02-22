@@ -13,7 +13,7 @@ def generate_locale_json(locale: str) -> dict[str, str]:
     :param locale: 语言代码(zh_cn/en_us)
     :return: key -> 翻译文本的字典
     """
-    translations = {}
+    translations: dict[str, str] = {}
 
     for ui_class in ALL_UI_CLASSES:
         prefix = ui_class.__i18n_prefix__
@@ -28,7 +28,7 @@ def generate_locale_json(locale: str) -> dict[str, str]:
                 # 直接使用 prefix.key 拼接，无任何转换
                 key = f"{prefix}.{attr_value.key}"
                 # 获取对应语言的翻译
-                translation = getattr(attr_value, locale)
+                translation: str = getattr(attr_value, locale)
                 translations[key] = translation
 
     return translations
