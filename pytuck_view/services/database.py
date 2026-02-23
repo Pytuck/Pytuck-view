@@ -6,8 +6,8 @@
 对于缺失的功能提供占位符和警告信息
 """
 
+import ctypes
 import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -245,7 +245,12 @@ class DatabaseService:
             opts: CsvBackendOptions | JsonBackendOptions | None = None
             match engine:
                 case "csv":
-                    opts = CsvBackendOptions(field_size_limit=sys.maxsize)
+                    # csv.field_size_limit() 接受 C long，Windows 上为 32 位
+                    # ctypes.sizeof(ctypes.c_long) 获取平台 C long 字节数
+                    _max_c_long = 2 ** (8 * ctypes.sizeof(ctypes.c_long) - 1) - 1
+                    opts = CsvBackendOptions(
+                        field_size_limit=_max_c_long
+                    )
                 case "json":
                     opts = JsonBackendOptions(impl="orjson")
                 case _:
