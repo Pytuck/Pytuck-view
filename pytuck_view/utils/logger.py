@@ -33,17 +33,17 @@ def init_logging(verbosity: int | None = None) -> None:
 
     if verbosity:
         level = logging.DEBUG
-        fmt = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+        fmt = "{asctime} {levelname} [{name}] {message}"
         datefmt = "%Y-%m-%d %H:%M:%S"
     else:
         level = DEFAULT_LEVEL
-        fmt = "%(levelname)s: %(message)s"
+        fmt = "{levelname}: {message}"
         datefmt = None
 
     root.setLevel(level)
     handler = logging.StreamHandler(stream=sys.stdout)
     handler.setLevel(level)
-    formatter = logging.Formatter(fmt, datefmt=datefmt)
+    formatter = logging.Formatter(fmt, datefmt=datefmt, style="{")
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
