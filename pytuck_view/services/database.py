@@ -242,6 +242,7 @@ class DatabaseService:
                     FileI18n.INVALID_DATABASE_FILE, path=str(path_obj)
                 )
 
+            opts: CsvBackendOptions | JsonBackendOptions | None = None
             match engine:
                 case "csv":
                     opts = CsvBackendOptions(field_size_limit=sys.maxsize)

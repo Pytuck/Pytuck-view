@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
 
@@ -7,7 +8,7 @@ current_context: ContextVar[ContextInfo] = ContextVar("current_context")
 
 
 @contextmanager
-def context_manager(context_info: ContextInfo):
+def context_manager(context_info: ContextInfo) -> Generator[None, None, None]:
     """
     上下文管理器
     """

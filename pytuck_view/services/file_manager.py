@@ -42,7 +42,8 @@ class FileManager:
         except Exception as e:
             # 如果无法创建配置目录，使用内存存储
             logger.warning(
-                f"无法创建配置目录 {self.config_dir}, 将使用内存存储。错误：{simplify_exception(e)}",
+                f"无法创建配置目录 {self.config_dir}, 将使用内存存储。"
+                f"错误：{simplify_exception(e)}"
             )
             self.config_file = None
 
