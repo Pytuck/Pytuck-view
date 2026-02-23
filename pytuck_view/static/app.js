@@ -10,7 +10,8 @@ const i18n = {
     loaded: new Set(),
 
     t(key) {
-        return this.messages[key] || key;
+        var val = this.messages[key];
+        return val !== undefined ? val : key;
     },
 
     async loadLocale(locale) {
@@ -21,7 +22,7 @@ const i18n = {
                 this.loading = false;
                 return;
             }
-            const response = await fetch(`/static/locales/${locale}.json`);
+            const response = await fetch(`/api/locales/${locale}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const translations = await response.json();
             this.messages = translations;
@@ -182,6 +183,9 @@ function createApiClient(state) {
                 if (!event.target.closest('.language-switcher')) {
                     showLanguageMenu.value = false;
                 }
+                if (!event.target.closest('.column-picker-wrapper')) {
+                    state.showColumnPicker = false;
+                }
             };
 
             // 复制错误消息到剪贴板
@@ -221,6 +225,7 @@ function createApiClient(state) {
                 currentPageNum: 1,
                 totalRows: 0,
                 rowsPerPage: 50,
+                jumpPageInput: '',
                 loading: false,
                 error: null,
                 placeholderWarning: null,
@@ -229,6 +234,7 @@ function createApiClient(state) {
                 // 编辑相关状态
                 primaryKeyColumn: null,       // 当前表的主键列名
                 hasPrimaryKey: false,         // 当前表是否有主键
+                isPseudoPk: false,            // 是否使用隐式 _pytuck_rowid
                 selectedRowIndex: null,       // 当前选中行索引
                 editRowIndex: null,           // 正在编辑的行索引
                 editBuffer: null,             // 编辑缓冲区
@@ -248,8 +254,43 @@ function createApiClient(state) {
                     originalName: '',
                     name: '',
                     comment: ''
-                }
+                },
+                // 单元格展开/列宽拖拽状态
+                expandedCells: {},            // { 'rowIndex-colName': true }
+                columnWidths: {},             // { colName: widthPx }
+                resizingColumn: null,         // 当前拖拽的列名
+                resizeStartX: 0,              // 拖拽起始X坐标
+                resizeStartWidth: 0,          // 拖拽起始宽度
+                // 侧边栏状态
+                sidebarCollapsed: false,      // 侧边栏是否折叠
+                sidebarWidth: 250,            // 侧边栏宽度(px)
+                showSidebarSearch: false,     // 是否显示搜索框
+                sidebarFilter: '',            // 搜索筛选文本
+                // 列可见性状态
+                hiddenColumns: {},            // { colName: true } 隐藏的列
+                showColumnPicker: false,      // 是否显示列选择器
+                // 成功消息
+                successMessage: null,         // 成功消息（绿色 toast）
             });
+
+            // ========== 引擎转换状态 ==========
+            const convertModal = reactive({
+                visible: false,
+                file: null,                   // 选中的文件
+                availableEngines: {},         // { engine_name: is_available }
+                targetEngine: '',             // 选中的目标引擎
+                targetPath: '',               // 目标文件路径
+                converting: false,            // 是否正在转换
+            });
+
+            const ENGINE_EXTENSIONS = {
+                binary: '.ptk',
+                sqlite: '.db',
+                json: '.json',
+                csv: '.csv.zip',
+                excel: '.xlsx',
+                xml: '.xml',
+            };
 
             // ========== 文件浏览器状态 ==========
             const fileBrowser = reactive({
@@ -263,6 +304,28 @@ function createApiClient(state) {
             // ========== 计算属性 ==========
             const totalPages = computed(() => Math.ceil(state.totalRows / state.rowsPerPage));
             const hasData = computed(() => state.tableData && state.tableData.length > 0);
+            const visibleColumns = computed(() => {
+                if (!state.tableSchema || !state.tableSchema.columns) return [];
+                return state.tableSchema.columns.filter(col =>
+                    col.name !== '_pytuck_rowid' && !state.hiddenColumns[col.name]
+                );
+            });
+            const filteredTables = computed(() => {
+                if (!state.sidebarFilter) return state.tables;
+                var kw = state.sidebarFilter.toLowerCase();
+                return state.tables.filter(t =>
+                    t.name.toLowerCase().includes(kw) ||
+                    (t.comment && t.comment.toLowerCase().includes(kw))
+                );
+            });
+            const sidebarWidthStyle = computed(() => {
+                return state.sidebarCollapsed ? '48px' : (state.sidebarWidth + 'px');
+            });
+            // 所有列（除 _pytuck_rowid，用于列选择器面板）
+            const allUserColumns = computed(() => {
+                if (!state.tableSchema || !state.tableSchema.columns) return [];
+                return state.tableSchema.columns.filter(col => col.name !== '_pytuck_rowid');
+            });
             const breadcrumbs = computed(() => utils.parseBreadcrumbs(fileBrowser.path));
             const canGoUp = computed(() => utils.canNavigateUp(fileBrowser.path));
 
@@ -275,7 +338,7 @@ function createApiClient(state) {
                     state.loading = true;
                     const data = await api('/recent-files');
                     const files = data.files || [];
-                    files.sort((a, b) => String(b.last_opened).localeCompare(String(a.last_opened)));
+                    files.sort((a, b) => String(a.path).localeCompare(String(b.path)));
                     state.recentFiles = files;
                 } catch (error) {
                     console.error('加载最近文件失败:', error);
@@ -317,6 +380,17 @@ function createApiClient(state) {
                     state.error = `${t('error.removeFailed')}: ${error.message}`;
                 } finally {
                     state.loading = false;
+                }
+            }
+
+            async function updateFileNote(fileId, note) {
+                try {
+                    await api(`/recent-files/${fileId}/note`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ note: note })
+                    });
+                } catch (error) {
+                    state.error = `${t('error.removeFailed')}: ${error.message}`;
                 }
             }
 
@@ -378,6 +452,8 @@ function createApiClient(state) {
                 try {
                     const data = await api(`/tables/${state.currentDatabase.file_id}`);
                     state.tables = data.tables || [];
+                    // 按表名排序
+                    state.tables.sort((a, b) => a.name.localeCompare(b.name));
                     if (data.has_placeholder) {
                         state.placeholderWarning = '部分功能需要 pytuck 库支持，表列表可能不完整';
                     }
@@ -398,6 +474,9 @@ function createApiClient(state) {
                     state.editBuffer = null;
                     state.isAddingRow = false;
                     state.newRowData = {};
+                    state.expandedCells = {};
+                    state.columnWidths = {};
+                    state.hiddenColumns = {};
 
                     // 并行加载表结构和数据
                     await Promise.all([
@@ -423,10 +502,12 @@ function createApiClient(state) {
                     const data = await api(`/schema/${state.currentDatabase.file_id}/${tableName}/primary-key`);
                     state.primaryKeyColumn = data.primary_key;
                     state.hasPrimaryKey = data.has_primary_key;
+                    state.isPseudoPk = data.is_pseudo_pk || false;
                 } catch (error) {
                     console.error('获取主键信息失败:', error);
                     state.primaryKeyColumn = null;
                     state.hasPrimaryKey = false;
+                    state.isPseudoPk = false;
                 }
             }
 
@@ -468,6 +549,11 @@ function createApiClient(state) {
             }
 
             async function sortTable(columnName) {
+                // 拖拽列宽后跳过排序
+                if (state.resizingColumn || state._justResized) {
+                    state._justResized = false;
+                    return;
+                }
                 if (state.sortBy === columnName) {
                     state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
                 } else {
@@ -487,6 +573,24 @@ function createApiClient(state) {
                 if (state.tableData.length > 0) {
                     state.selectedRowIndex = 0;
                 }
+            }
+
+            async function changeRowsPerPage(newSize) {
+                state.rowsPerPage = newSize;
+                state.currentPageNum = 1;
+                if (state.currentTable) {
+                    await loadTableData(state.currentTable, 1);
+                    if (state.tableData.length > 0) {
+                        state.selectedRowIndex = 0;
+                    }
+                }
+            }
+
+            function jumpToPage() {
+                var page = state.jumpPageInput;
+                if (!page || page < 1 || page > totalPages.value) return;
+                goToPage(page);
+                state.jumpPageInput = '';
             }
 
             // ========== 表/列编辑操作 ==========
@@ -648,6 +752,131 @@ function createApiClient(state) {
                 }
             }
 
+            async function deleteTable() {
+                if (!state.currentDatabase) return;
+                const tableName = state.tableEditForm.originalName;
+
+                const msg = t('dataEdit.confirmDeleteTable').replace('{name}', tableName);
+                if (!confirm(msg)) return;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/tables/${state.currentDatabase.file_id}/${tableName}`, {
+                        method: 'DELETE'
+                    });
+
+                    closeTableEditModal();
+
+                    // 如果删除的是当前选中的表，清空右侧内容
+                    if (state.currentTable === tableName) {
+                        state.currentTable = null;
+                        state.tableSchema = null;
+                        state.tableData = [];
+                        state.totalRows = 0;
+                    }
+
+                    await loadTables();
+                } catch (error) {
+                    state.error = `${t('dataEdit.deleteFailed')}: ${error.message}`;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 单元格展开/列宽拖拽 ==========
+
+            function isCellExpanded(rowIndex, colName) {
+                return !!state.expandedCells[rowIndex + '-' + colName];
+            }
+
+            function toggleCellExpand(rowIndex, colName) {
+                var key = rowIndex + '-' + colName;
+                if (state.expandedCells[key]) {
+                    delete state.expandedCells[key];
+                } else {
+                    state.expandedCells[key] = true;
+                }
+            }
+
+            function getColWidth(colName) {
+                return state.columnWidths[colName] || 150;
+            }
+
+            function startColResize(event, colName) {
+                state.resizingColumn = colName;
+                state.resizeStartX = event.clientX;
+                state.resizeStartWidth = getColWidth(colName);
+
+                var onMouseMove = function(e) {
+                    if (!state.resizingColumn) return;
+                    var diff = e.clientX - state.resizeStartX;
+                    var newWidth = Math.max(50, state.resizeStartWidth + diff);
+                    state.columnWidths[colName] = newWidth;
+                };
+
+                var onMouseUp = function() {
+                    state.resizingColumn = null;
+                    state._justResized = true;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+
+            // ========== 侧边栏操作 ==========
+
+            function toggleSidebar() {
+                state.sidebarCollapsed = !state.sidebarCollapsed;
+            }
+
+            function startSidebarResize(event) {
+                if (state.sidebarCollapsed) return;
+                var startX = event.clientX;
+                var startWidth = state.sidebarWidth;
+
+                var onMouseMove = function(e) {
+                    var diff = e.clientX - startX;
+                    state.sidebarWidth = Math.max(150, Math.min(600, startWidth + diff));
+                };
+
+                var onMouseUp = function() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+
+            function toggleSidebarSearch() {
+                state.showSidebarSearch = !state.showSidebarSearch;
+                if (!state.showSidebarSearch) {
+                    state.sidebarFilter = '';
+                } else {
+                    Vue.nextTick(() => {
+                        var input = document.querySelector('.sidebar-search-input');
+                        if (input) input.focus();
+                    });
+                }
+            }
+
+            // ========== 列可见性操作 ==========
+
+            function toggleColumnPicker() {
+                state.showColumnPicker = !state.showColumnPicker;
+            }
+
+            function toggleColumnVisibility(colName) {
+                if (state.hiddenColumns[colName]) {
+                    delete state.hiddenColumns[colName];
+                } else {
+                    state.hiddenColumns[colName] = true;
+                }
+            }
+
             // ========== 数据行验证 ==========
 
             function validateRowData(data, columns, isNew = false) {
@@ -676,10 +905,6 @@ function createApiClient(state) {
             }
 
             function startEditRow(index) {
-                if (!state.hasPrimaryKey) {
-                    state.error = t('dataEdit.noPkCannotEdit');
-                    return;
-                }
                 state.editRowIndex = index;
                 state.editBuffer = JSON.parse(JSON.stringify(state.tableData[index]));
             }
@@ -691,7 +916,7 @@ function createApiClient(state) {
 
             async function saveEditRow() {
                 if (!state.currentDatabase || !state.currentTable || state.editBuffer === null) return;
-                if (!state.hasPrimaryKey || !state.primaryKeyColumn) {
+                if (!state.primaryKeyColumn) {
                     state.error = t('dataEdit.noPkCannotSave');
                     return;
                 }
@@ -706,13 +931,16 @@ function createApiClient(state) {
                 }
 
                 const pkValue = state.tableData[state.editRowIndex][state.primaryKeyColumn];
+                // 发送前移除 _pytuck_rowid（内部字段不作为更新数据）
+                const sendData = Object.assign({}, state.editBuffer);
+                delete sendData._pytuck_rowid;
 
                 try {
                     state.loading = true;
                     state.error = null;
                     await api(`/rows/${state.currentDatabase.file_id}/${state.currentTable}`, {
                         method: 'PUT',
-                        body: JSON.stringify({ pk: pkValue, data: state.editBuffer })
+                        body: JSON.stringify({ pk: pkValue, data: sendData })
                     });
                     cancelEditRow();
                     await loadTableData(state.currentTable, state.currentPageNum);
@@ -725,7 +953,7 @@ function createApiClient(state) {
 
             async function deleteRow(index) {
                 if (!state.currentDatabase || !state.currentTable) return;
-                if (!state.hasPrimaryKey || !state.primaryKeyColumn) {
+                if (!state.primaryKeyColumn) {
                     state.error = t('dataEdit.noPkCannotDelete');
                     return;
                 }
@@ -758,6 +986,8 @@ function createApiClient(state) {
                 // 初始化默认值
                 if (state.tableSchema?.columns) {
                     state.tableSchema.columns.forEach(col => {
+                        // 跳过隐式行号字段
+                        if (col.name === '_pytuck_rowid') return;
                         if (col.default_value && col.default_value !== 'None') {
                             state.newRowData[col.name] = col.default_value;
                         } else {
@@ -835,10 +1065,6 @@ function createApiClient(state) {
             }
 
             function startEditRecord() {
-                if (!state.hasPrimaryKey) {
-                    state.error = t('dataEdit.noPkCannotEdit');
-                    return;
-                }
                 if (state.selectedRowIndex === null) return;
                 state.editBuffer = JSON.parse(JSON.stringify(state.tableData[state.selectedRowIndex]));
                 state.editRowIndex = state.selectedRowIndex;
@@ -851,7 +1077,7 @@ function createApiClient(state) {
 
             async function saveEditRecord() {
                 if (!state.currentDatabase || !state.currentTable || state.editBuffer === null) return;
-                if (!state.hasPrimaryKey || !state.primaryKeyColumn) {
+                if (!state.primaryKeyColumn) {
                     state.error = t('dataEdit.noPkCannotSave');
                     return;
                 }
@@ -866,13 +1092,16 @@ function createApiClient(state) {
                 }
 
                 const pkValue = state.tableData[state.selectedRowIndex][state.primaryKeyColumn];
+                // 发送前移除 _pytuck_rowid（内部字段不作为更新数据）
+                const sendData = Object.assign({}, state.editBuffer);
+                delete sendData._pytuck_rowid;
 
                 try {
                     state.loading = true;
                     state.error = null;
                     await api(`/rows/${state.currentDatabase.file_id}/${state.currentTable}`, {
                         method: 'PUT',
-                        body: JSON.stringify({ pk: pkValue, data: state.editBuffer })
+                        body: JSON.stringify({ pk: pkValue, data: sendData })
                     });
                     cancelEditRecord();
                     await loadTableData(state.currentTable, state.currentPageNum);
@@ -886,7 +1115,7 @@ function createApiClient(state) {
             async function deleteRecord() {
                 if (state.selectedRowIndex === null) return;
                 if (!state.currentDatabase || !state.currentTable) return;
-                if (!state.hasPrimaryKey || !state.primaryKeyColumn) {
+                if (!state.primaryKeyColumn) {
                     state.error = t('dataEdit.noPkCannotDelete');
                     return;
                 }
@@ -927,6 +1156,71 @@ function createApiClient(state) {
                 await loadRecentFiles();
             }
 
+            // ========== 引擎转换操作 ==========
+            async function loadAvailableEngines() {
+                try {
+                    const result = await api('/available-engines');
+                    convertModal.availableEngines = result.engines || {};
+                } catch (error) {
+                    state.error = error.message;
+                }
+            }
+
+            function openConvertModal(file) {
+                convertModal.file = file;
+                convertModal.targetEngine = '';
+                convertModal.targetPath = '';
+                convertModal.visible = true;
+                convertModal.converting = false;
+                loadAvailableEngines();
+            }
+
+            function closeConvertModal() {
+                convertModal.visible = false;
+            }
+
+            function onTargetEngineChange() {
+                const file = convertModal.file;
+                if (!file || !convertModal.targetEngine) return;
+                const ext = ENGINE_EXTENSIONS[convertModal.targetEngine] || '';
+                // 提取目录和文件名
+                const sep = file.path.includes('\\') ? '\\' : '/';
+                const lastSep = file.path.lastIndexOf(sep);
+                const dir = lastSep >= 0 ? file.path.substring(0, lastSep) : '';
+                const stem = file.name;
+                convertModal.targetPath = dir + sep + stem + ext;
+            }
+
+            async function startConvert() {
+                const { file, targetEngine, targetPath } = convertModal;
+                if (!file || !targetEngine || !targetPath) return;
+                convertModal.converting = true;
+                try {
+                    const result = await api('/convert-engine', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            source_path: file.path,
+                            source_engine: file.engine_name,
+                            target_engine: targetEngine,
+                            target_path: targetPath,
+                        })
+                    });
+                    closeConvertModal();
+                    // 显示成功消息
+                    const msg = t('convert.convertSuccess')
+                        .replace('{tables}', result.tables)
+                        .replace('{records}', result.records);
+                    state.successMessage = msg;
+                    setTimeout(() => { state.successMessage = null; }, 5000);
+                    // 刷新文件列表
+                    await loadRecentFiles();
+                } catch (error) {
+                    state.error = `${t('convert.convertFailed')}: ${error.message}`;
+                } finally {
+                    convertModal.converting = false;
+                }
+            }
+
             // ========== 生命周期 ==========
             onMounted(async () => {
                 await loadRecentFiles();
@@ -938,19 +1232,28 @@ function createApiClient(state) {
                 locale, isLoadingLocale, showLanguageMenu, t,
                 switchLocale, toggleLanguageMenu, handleGlobalClick, copyErrorMessage,
                 // 状态
-                state, fileBrowser, totalPages, hasData, breadcrumbs, canGoUp,
+                state, fileBrowser, totalPages, hasData, visibleColumns,
+                filteredTables, sidebarWidthStyle, allUserColumns,
+                breadcrumbs, canGoUp,
                 // 文件操作
-                openFile, removeHistory, loadRecentFiles,
+                openFile, removeHistory, loadRecentFiles, updateFileNote,
                 openFileBrowser, closeFileBrowser, browseTo,
                 goToPath, goUp, goToBreadcrumb, selectAndOpenFile,
                 // 表操作
                 selectTable, switchToDataTab, sortTable, goToPage,
+                changeRowsPerPage, jumpToPage,
                 // 表/列编辑
                 startEditTableName, cancelEditTableName, saveTableName,
                 startEditTableComment, cancelEditTableComment, saveTableComment,
                 startEditColumnComment, cancelEditColumnComment, saveColumnComment,
                 // 表编辑弹窗
-                openTableEditModal, closeTableEditModal, saveTableEdit,
+                openTableEditModal, closeTableEditModal, saveTableEdit, deleteTable,
+                // 单元格展开/列宽拖拽
+                isCellExpanded, toggleCellExpand, getColWidth, startColResize,
+                // 侧边栏
+                toggleSidebar, startSidebarResize, toggleSidebarSearch,
+                // 列可见性
+                toggleColumnPicker, toggleColumnVisibility,
                 // 数据行编辑
                 selectRow, startEditRow, cancelEditRow, saveEditRow, deleteRow,
                 startAddRow, cancelAddRow, saveNewRow,
@@ -959,6 +1262,9 @@ function createApiClient(state) {
                 startEditRecord, cancelEditRecord, saveEditRecord, deleteRecord,
                 // 导航
                 backToFileSelector,
+                // 引擎转换
+                convertModal, openConvertModal, closeConvertModal,
+                onTargetEngineChange, startConvert,
                 // 工具函数
                 formatFileSize: utils.formatFileSize,
                 formatDate: utils.formatDate

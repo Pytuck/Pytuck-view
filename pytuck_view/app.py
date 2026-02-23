@@ -22,8 +22,7 @@ def create_app() -> FastAPI:
     from pytuck_view import __version__
     from pytuck_view.base.setup import setup_all
 
-    root_path = Path(__file__).parent
-    setup_all(root_path)
+    setup_all()
 
     app = FastAPI(
         title="pytuck-view",

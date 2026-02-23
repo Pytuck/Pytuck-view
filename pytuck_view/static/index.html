@@ -76,9 +76,20 @@
                                 <span class="file-card-name">{{ file.name }}</span>
                                 <span v-if="file.engine_name" class="engine-tag">{{ file.engine_name }}</span>
                             </div>
-                            <button class="file-card-remove" :title="t('dataEdit.remove')" @click.stop="removeHistory(file.file_id)">×</button>
+                            <button class="file-card-action file-card-convert" :title="t('convert.convertEngine')" @click.stop="openConvertModal(file)">⇋</button>
+                            <button class="file-card-action file-card-remove" :title="t('dataEdit.remove')" @click.stop="removeHistory(file.file_id)">×</button>
                         </div>
                         <div class="file-card-path">{{ file.path }}</div>
+                        <div class="file-card-note" @click.stop>
+                            <input
+                                type="text"
+                                class="file-note-input"
+                                :value="file.note || ''"
+                                :placeholder="t('file.notePlaceholder')"
+                                @blur="updateFileNote(file.file_id, $event.target.value)"
+                                @keyup.enter="$event.target.blur()"
+                            />
+                        </div>
                         <div class="file-card-meta">
                             {{ formatFileSize(file.file_size) }} • {{ formatDate(file.last_opened) }}
                         </div>
@@ -95,11 +106,11 @@
 
         <!-- 数据库查看页面 -->
         <div v-else-if="state.currentPage === 'database-view'" class="database-view">
-            <header class="header">
-                <button @click="backToFileSelector" class="btn btn-back">← {{ t('common.back') }}</button>
+            <header class="header header-compact">
+                <button @click="backToFileSelector" class="btn btn-back btn-small">← {{ t('common.back') }}</button>
                 <div class="db-info">
                     <h1>📊 {{ state.currentDatabase.name }}</h1>
-                    <p>{{ state.currentDatabase.tables_count }} {{ t('common.tablesCount') }} • {{ formatFileSize(state.currentDatabase.file_size) }}</p>
+                    <span class="db-meta">{{ state.currentDatabase.tables_count }} {{ t('common.tablesCount') }} • {{ formatFileSize(state.currentDatabase.file_size) }}</span>
                 </div>
             </header>
 
@@ -111,16 +122,33 @@
 
             <div class="main-content">
                 <!-- 侧边栏 - 表列表 -->
-                <aside class="sidebar">
-                    <h3>📋 {{ t('table.dataTables') }}</h3>
-                    <div class="table-list">
-                        <div v-for="table in state.tables" :key="table.name"
+                <aside class="sidebar" :class="{ collapsed: state.sidebarCollapsed }" :style="{ width: sidebarWidthStyle }">
+                    <div class="sidebar-header">
+                        <span v-if="!state.sidebarCollapsed" class="sidebar-title-text">📋 {{ t('table.dataTables') }}</span>
+                        <div class="sidebar-actions">
+                            <button v-if="!state.sidebarCollapsed" class="btn-icon sidebar-search-btn" @click="toggleSidebarSearch" :title="t('common.search')">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                            </button>
+                            <button class="btn-icon sidebar-toggle-btn" @click="toggleSidebar" :title="state.sidebarCollapsed ? t('dataEdit.expandSidebar') : t('dataEdit.collapseSidebar')">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path v-if="!state.sidebarCollapsed" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                                    <path v-else d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="!state.sidebarCollapsed && state.showSidebarSearch" class="sidebar-search">
+                        <input class="sidebar-search-input" v-model="state.sidebarFilter" :placeholder="t('dataEdit.searchTable')" />
+                    </div>
+                    <div class="table-list" v-if="!state.sidebarCollapsed">
+                        <div v-for="table in filteredTables" :key="table.name"
                              class="table-item"
                              :class="{
                                 active: state.currentTable === table.name,
                                 placeholder: table.name.startsWith('⚠️') || table.name.startsWith('💡') || table.name.startsWith('📋')
                              }"
-                             @click="selectTable(table.name)">
+                             @click="selectTable(table.name)"
+                             :title="table.name + (table.comment ? ' - ' + table.comment : '')">
                             <div class="table-item-content">
                                 <div class="table-item-name">{{ table.name }}</div>
                                 <div v-if="table.comment" class="table-item-comment">{{ table.comment }}</div>
@@ -135,36 +163,29 @@
                     </div>
                 </aside>
 
+                <!-- 侧边栏拖拽手柄 -->
+                <div v-if="!state.sidebarCollapsed" class="sidebar-resize-handle" @mousedown.prevent="startSidebarResize($event)"></div>
+
                 <!-- 主内容区 -->
                 <main class="content">
                     <div v-if="!state.currentTable" class="welcome">
                         <h2>👈 {{ t('table.selectTableHint') }}</h2>
                     </div>
 
-                    <div v-else>
-                        <!-- 表信息 -->
-                        <div v-if="state.tableSchema" class="table-info">
-                            <div class="table-header">
-                                <!-- 表名+备注+行数 一行显示 -->
-                                <div class="table-header-row">
-                                    <div class="table-header-info">
-                                        <h2>📊 {{ state.tableSchema.table_name }}</h2>
-                                        <span v-if="state.tableSchema.table_comment" class="table-comment-inline">
-                                            ({{ state.tableSchema.table_comment }})
-                                        </span>
-                                        <span v-if="!state.hasPrimaryKey" class="no-pk-warning">⚠️ {{ t('dataEdit.noPrimaryKey') }}</span>
-                                    </div>
-                                    <div class="table-header-meta">
-                                        {{ state.tableSchema.row_count }} {{ t('table.rowsCount') }}
-                                    </div>
-                                </div>
+                    <div v-else class="content-body">
+                        <!-- 表名 + Tab 合并为一行 -->
+                        <div v-if="state.tableSchema" class="table-header-bar">
+                            <div class="table-header-info">
+                                <span class="table-name">📊 {{ state.tableSchema.table_name }}</span>
+                                <span v-if="state.tableSchema.table_comment" class="table-comment-inline">
+                                    ({{ state.tableSchema.table_comment }})
+                                </span>
+                                <span v-if="state.isPseudoPk" class="no-pk-warning">⚠️ {{ t('dataEdit.usingInternalRowId') }}</span>
                             </div>
-                        </div>
-
-                        <!-- Tab -->
-                        <div class="tab-bar">
-                            <button class="tab" :class="{active: state.activeTab === 'structure'}" @click="state.activeTab = 'structure'">{{ t('table.tabStructure') }}</button>
-                            <button class="tab" :class="{active: state.activeTab === 'data'}" @click="switchToDataTab">{{ t('table.tabData') }}</button>
+                            <div class="tab-bar">
+                                <button class="tab" :class="{active: state.activeTab === 'structure'}" @click="state.activeTab = 'structure'">{{ t('table.tabStructure') }}</button>
+                                <button class="tab" :class="{active: state.activeTab === 'data'}" @click="switchToDataTab">{{ t('table.tabData') }}</button>
+                            </div>
                         </div>
 
                         <!-- 结构 Tab -->
@@ -182,7 +203,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="col in state.tableSchema.columns" :key="col.name">
+                                        <tr v-for="col in visibleColumns" :key="col.name">
                                             <td class="col-name-cell">
                                                 {{ col.name }}
                                             </td>
@@ -232,8 +253,19 @@
                                     <button class="btn btn-small" @click="startAddRow" :disabled="state.isAddingRow">
                                         ➕ {{ t('dataEdit.addRow') }}
                                     </button>
-                                    <span v-if="!state.hasPrimaryKey" class="toolbar-warning">
-                                        ⚠️ {{ t('dataEdit.noPkEditLimit') }}
+                                    <div class="column-picker-wrapper">
+                                        <button class="btn btn-small" @click.stop="toggleColumnPicker" :title="t('dataEdit.columnsToggle')">
+                                            📋 {{ t('dataEdit.columnsToggle') }}
+                                        </button>
+                                        <div v-if="state.showColumnPicker" class="column-picker" @click.stop>
+                                            <label v-for="col in allUserColumns" :key="col.name" class="column-picker-item">
+                                                <input type="checkbox" :checked="!state.hiddenColumns[col.name]" @change="toggleColumnVisibility(col.name)" />
+                                                <span>{{ col.name }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <span v-if="state.isPseudoPk" class="toolbar-warning">
+                                        ⚠️ {{ t('dataEdit.usingInternalRowId') }}
                                     </span>
                                 </div>
                                 <div class="toolbar-right">
@@ -261,7 +293,7 @@
                                 <div v-if="state.isAddingRow && state.tableSchema && state.tableSchema.columns" class="add-row-form">
                                     <h4>{{ t('dataEdit.newRecord') }}</h4>
                                     <div class="add-row-fields">
-                                        <div v-for="col in state.tableSchema.columns" :key="col.name" class="add-row-field">
+                                        <div v-for="col in visibleColumns" :key="col.name" class="add-row-field">
                                             <label>{{ col.name }}</label>
                                             <input
                                                 v-model="state.newRowData[col.name]"
@@ -281,15 +313,18 @@
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th class="action-col">{{ t('dataEdit.actions') }}</th>
-                                                <th v-for="col in state.tableSchema.columns" :key="col.name"
-                                                    @click="sortTable(col.name)"
-                                                    class="sortable">
-                                                    {{ col.name }}
-                                                    <span v-if="state.sortBy === col.name">
-                                                        <span v-if="state.sortOrder === 'asc'">↑</span>
-                                                        <span v-else>↓</span>
+                                                <th class="action-col" :style="{ width: '70px' }">{{ t('dataEdit.actions') }}</th>
+                                                <th v-for="(col, colIndex) in visibleColumns" :key="col.name"
+                                                    :style="{ width: getColWidth(col.name) + 'px' }">
+                                                    <span class="th-label">{{ col.name }}</span>
+                                                    <span class="sort-icon" @click.stop="sortTable(col.name)" :title="'Sort by ' + col.name">
+                                                        <template v-if="state.sortBy === col.name">
+                                                            <span v-if="state.sortOrder === 'asc'">↑</span>
+                                                            <span v-else>↓</span>
+                                                        </template>
+                                                        <template v-else>⇅</template>
                                                     </span>
+                                                    <span class="col-resize-handle" @mousedown.stop.prevent="startColResize($event, col.name)"></span>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -306,13 +341,11 @@
                                                         <button
                                                             class="btn-icon btn-tiny"
                                                             @click.stop="startEditRow(index)"
-                                                            :disabled="!state.hasPrimaryKey"
                                                             :title="t('dataEdit.edit')"
                                                         >✏️</button>
                                                         <button
                                                             class="btn-icon btn-tiny btn-danger"
                                                             @click.stop="deleteRow(index)"
-                                                            :disabled="!state.hasPrimaryKey"
                                                             :title="t('dataEdit.delete')"
                                                         >🗑️</button>
                                                     </template>
@@ -322,9 +355,11 @@
                                                     </template>
                                                 </td>
                                                 <!-- 数据列 -->
-                                                <td v-for="col in state.tableSchema.columns" :key="col.name">
+                                                <td v-for="col in visibleColumns" :key="col.name">
                                                     <template v-if="state.editRowIndex !== index">
-                                                        {{ row[col.name] }}
+                                                        <div class="cell-content"
+                                                             :class="{ expanded: isCellExpanded(index, col.name) }"
+                                                             @click.stop="toggleCellExpand(index, col.name)"><span v-if="row[col.name] === null || row[col.name] === undefined" class="cell-null">null</span><template v-else>{{ row[col.name] }}</template></div>
                                                     </template>
                                                     <template v-else>
                                                         <input
@@ -348,24 +383,44 @@
                             <!-- 逐条记录视图 -->
                             <template v-else-if="state.viewMode === 'record'">
                                 <div v-if="hasData && state.selectedRowIndex !== null && state.tableSchema && state.tableSchema.columns" class="record-view">
-                                    <!-- 记录导航 -->
+                                    <!-- 记录导航 + 操作 -->
                                     <div class="record-nav">
-                                        <button class="btn btn-small" @click="prevRecord" :disabled="state.selectedRowIndex === 0">
-                                            ◀ {{ t('dataEdit.prevRecord') }}
-                                        </button>
-                                        <span class="record-counter">
-                                            {{ t('dataEdit.recordCounter').replace('{current}', state.selectedRowIndex + 1).replace('{total}', state.tableData.length) }}
-                                        </span>
-                                        <button class="btn btn-small" @click="nextRecord" :disabled="state.selectedRowIndex >= state.tableData.length - 1">
-                                            {{ t('dataEdit.nextRecord') }} ▶
-                                        </button>
+                                        <div class="record-nav-left">
+                                            <button class="btn btn-small" @click="prevRecord" :disabled="state.selectedRowIndex === 0">
+                                                ◀ {{ t('dataEdit.prevRecord') }}
+                                            </button>
+                                            <span class="record-counter">
+                                                {{ t('dataEdit.recordCounter').replace('{current}', state.selectedRowIndex + 1).replace('{total}', state.tableData.length) }}
+                                            </span>
+                                            <button class="btn btn-small" @click="nextRecord" :disabled="state.selectedRowIndex >= state.tableData.length - 1">
+                                                {{ t('dataEdit.nextRecord') }} ▶
+                                            </button>
+                                        </div>
+                                        <div class="record-nav-right">
+                                            <template v-if="state.editRowIndex !== state.selectedRowIndex">
+                                                <button class="btn btn-small btn-primary" @click="startEditRecord">
+                                                    ✏️ {{ t('dataEdit.edit') }}
+                                                </button>
+                                                <button class="btn btn-small btn-danger" @click="deleteRecord">
+                                                    🗑️ {{ t('dataEdit.delete') }}
+                                                </button>
+                                            </template>
+                                            <template v-else>
+                                                <button class="btn btn-small btn-primary" @click="saveEditRecord">
+                                                    ✓ {{ t('dataEdit.save') }}
+                                                </button>
+                                                <button class="btn btn-small" @click="cancelEditRecord">
+                                                    ✕ {{ t('common.cancel') }}
+                                                </button>
+                                            </template>
+                                        </div>
                                     </div>
 
                                     <!-- 记录详情 -->
                                     <div class="record-detail">
                                         <table class="record-table">
                                             <tbody>
-                                                <tr v-for="col in state.tableSchema.columns" :key="col.name">
+                                                <tr v-for="col in visibleColumns" :key="col.name">
                                                     <th class="record-field-name">
                                                         <div class="field-name-wrapper">
                                                             {{ col.name }}
@@ -375,7 +430,8 @@
                                                     </th>
                                                     <td class="record-field-value">
                                                         <template v-if="state.editRowIndex !== state.selectedRowIndex">
-                                                            {{ state.tableData[state.selectedRowIndex][col.name] }}
+                                                            <span v-if="state.tableData[state.selectedRowIndex][col.name] === null || state.tableData[state.selectedRowIndex][col.name] === undefined" class="cell-null">null</span>
+                                                            <template v-else>{{ state.tableData[state.selectedRowIndex][col.name] }}</template>
                                                         </template>
                                                         <template v-else>
                                                             <textarea
@@ -398,36 +454,6 @@
                                         </table>
                                     </div>
 
-                                    <!-- 记录操作 -->
-                                    <div class="record-actions">
-                                        <template v-if="state.editRowIndex !== state.selectedRowIndex">
-                                            <button
-                                                class="btn btn-primary"
-                                                @click="startEditRecord"
-                                                :disabled="!state.hasPrimaryKey"
-                                            >
-                                                ✏️ {{ t('dataEdit.edit') }}
-                                            </button>
-                                            <button
-                                                class="btn btn-danger"
-                                                @click="deleteRecord"
-                                                :disabled="!state.hasPrimaryKey"
-                                            >
-                                                🗑️ {{ t('dataEdit.delete') }}
-                                            </button>
-                                        </template>
-                                        <template v-else>
-                                            <button class="btn btn-primary" @click="saveEditRecord">
-                                                ✓ {{ t('dataEdit.save') }}
-                                            </button>
-                                            <button class="btn" @click="cancelEditRecord">
-                                                ✕ {{ t('common.cancel') }}
-                                            </button>
-                                        </template>
-                                        <button class="btn" @click="switchViewMode('table')">
-                                            📋 {{ t('dataEdit.returnTableView') }}
-                                        </button>
-                                    </div>
                                 </div>
                                 <div v-else class="empty-data">
                                     <p>📭 {{ t('dataEdit.noData') }}</p>
@@ -435,12 +461,36 @@
                             </template>
 
                             <!-- 分页 -->
-                            <div v-if="totalPages > 1" class="pagination">
-                                <button @click="goToPage(1)" :disabled="state.currentPageNum === 1">{{ t('dataEdit.firstPage') }}</button>
-                                <button @click="goToPage(state.currentPageNum - 1)" :disabled="state.currentPageNum === 1">{{ t('dataEdit.prevPage') }}</button>
-                                <span>{{ t('dataEdit.pageInfo').replace('{current}', state.currentPageNum).replace('{total}', totalPages) }}</span>
-                                <button @click="goToPage(state.currentPageNum + 1)" :disabled="state.currentPageNum === totalPages">{{ t('dataEdit.nextPage') }}</button>
-                                <button @click="goToPage(totalPages)" :disabled="state.currentPageNum === totalPages">{{ t('dataEdit.lastPage') }}</button>
+                            <div v-if="totalPages >= 1" class="pagination">
+                                <div class="pagination-left">
+                                    <span>{{ t('dataEdit.totalRows').replace('{total}', state.totalRows) }}</span>
+                                </div>
+                                <div class="pagination-center">
+                                    <button @click="goToPage(1)" :disabled="state.currentPageNum === 1">{{ t('dataEdit.firstPage') }}</button>
+                                    <button @click="goToPage(state.currentPageNum - 1)" :disabled="state.currentPageNum === 1">{{ t('dataEdit.prevPage') }}</button>
+                                    <span>{{ t('dataEdit.pageInfo').replace('{current}', state.currentPageNum).replace('{total}', totalPages) }}</span>
+                                    <button @click="goToPage(state.currentPageNum + 1)" :disabled="state.currentPageNum === totalPages">{{ t('dataEdit.nextPage') }}</button>
+                                    <button @click="goToPage(totalPages)" :disabled="state.currentPageNum === totalPages">{{ t('dataEdit.lastPage') }}</button>
+                                </div>
+                                <div class="pagination-right">
+                                    <span>{{ t('dataEdit.rowsPerPage') }}</span>
+                                    <select :value="state.rowsPerPage" @change="changeRowsPerPage(Number($event.target.value))">
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="200">200</option>
+                                    </select>
+                                    <span>{{ t('dataEdit.jumpToPage') }}</span>
+                                    <input
+                                        class="jump-input"
+                                        type="number"
+                                        min="1"
+                                        :max="totalPages"
+                                        v-model.number="state.jumpPageInput"
+                                        @keyup.enter="jumpToPage"
+                                    />
+                                    <span v-if="t('dataEdit.pageSuffix')">{{ t('dataEdit.pageSuffix') }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -557,8 +607,60 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn" @click="closeTableEditModal">{{ t('common.cancel') }}</button>
-                    <button class="btn btn-primary" @click="saveTableEdit">{{ t('dataEdit.save') }}</button>
+                    <button class="btn btn-danger" @click="deleteTable">🗑️ {{ t('dataEdit.deleteTable') }}</button>
+                    <div class="modal-footer-right">
+                        <button class="btn" @click="closeTableEditModal">{{ t('common.cancel') }}</button>
+                        <button class="btn btn-primary" @click="saveTableEdit">{{ t('dataEdit.save') }}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 引擎转换模态框 -->
+        <div v-if="convertModal.visible" class="modal-overlay" @click.self="closeConvertModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🔄 {{ t('convert.convertEngine') }}</h3>
+                    <button class="btn-icon" @click="closeConvertModal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="convert-field">
+                        <label>{{ t('convert.sourceFile') }}</label>
+                        <div class="convert-file-info">
+                            <span>{{ convertModal.file?.name }}</span>
+                            <span class="engine-tag">{{ convertModal.file?.engine_name }}</span>
+                            <span class="convert-file-size">{{ formatFileSize(convertModal.file?.file_size) }}</span>
+                        </div>
+                    </div>
+                    <div class="convert-field">
+                        <label>{{ t('convert.targetEngine') }}</label>
+                        <select v-model="convertModal.targetEngine" @change="onTargetEngineChange" class="convert-select">
+                            <option value="" disabled>{{ t('convert.selectEngine') }}</option>
+                            <template v-for="(available, engine) in convertModal.availableEngines" :key="engine">
+                                <option
+                                    v-if="engine !== convertModal.file?.engine_name"
+                                    :value="engine"
+                                    :disabled="!available">
+                                    {{ engine }}{{ !available ? ' (N/A)' : '' }}
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+                    <div v-if="convertModal.targetEngine" class="convert-field">
+                        <label>{{ t('convert.savePath') }}</label>
+                        <input type="text" v-model="convertModal.targetPath" class="convert-path-input" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div></div>
+                    <div class="modal-footer-right">
+                        <button class="btn" @click="closeConvertModal">{{ t('common.cancel') }}</button>
+                        <button class="btn btn-primary"
+                            @click="startConvert"
+                            :disabled="!convertModal.targetEngine || !convertModal.targetPath || convertModal.converting">
+                            {{ convertModal.converting ? t('convert.converting') : t('convert.startConvert') }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -573,6 +675,14 @@
                         <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                     </svg>
                 </button>
+            </div>
+        </div>
+
+        <!-- 成功消息 Toast -->
+        <div v-if="state.successMessage" class="toast toast-success">
+            <div class="toast-content">{{ state.successMessage }}</div>
+            <div class="toast-actions">
+                <button class="toast-btn" @click="state.successMessage = null" :title="t('common.close')">✕</button>
             </div>
         </div>
 

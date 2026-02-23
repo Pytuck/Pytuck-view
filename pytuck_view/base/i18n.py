@@ -60,6 +60,16 @@ class ApiSummaryI18n:
 
     DELETE_ROW = I18nMessage(zh_cn="删除行", en_us="Delete row")
 
+    DROP_TABLE = I18nMessage(zh_cn="删除表", en_us="Drop table")
+
+    UPDATE_FILE_NOTE = I18nMessage(zh_cn="更新文件备注", en_us="Update file note")
+
+    GET_AVAILABLE_ENGINES = I18nMessage(
+        zh_cn="获取可用引擎列表", en_us="Get available engines"
+    )
+
+    CONVERT_ENGINE = I18nMessage(zh_cn="引擎转换", en_us="Convert engine")
+
 
 class FileI18n:
     """文件管理模块国际化"""
@@ -105,6 +115,10 @@ class FileI18n:
 
     HISTORY_NOT_EXISTS = I18nMessage(
         zh_cn="历史记录不存在", en_us="History record not exists"
+    )
+
+    UPDATE_NOTE_SUCCESS = I18nMessage(
+        zh_cn="备注更新成功", en_us="Note updated successfully"
     )
 
     GET_USER_HOME_FAILED = I18nMessage(
@@ -245,4 +259,29 @@ class DatabaseI18n:
     UPDATE_COMMENT_FAILED = I18nMessage(
         zh_cn="更新备注失败: {error}",
         en_us="Update comment failed: {error}",
+    )
+
+    DROP_TABLE_SUCCESS = I18nMessage(
+        zh_cn="表删除成功",
+        en_us="Table deleted successfully",
+    )
+
+    DROP_TABLE_FAILED = I18nMessage(
+        zh_cn="删除表失败: {error}",
+        en_us="Drop table failed: {error}",
+    )
+
+
+class ConvertI18n:
+    """引擎转换相关国际化消息"""
+
+    CONVERT_SUCCESS = I18nMessage(zh_cn="转换完成", en_us="Conversion completed")
+
+    CONVERT_FAILED = I18nMessage(
+        zh_cn="转换失败: {detail}", en_us="Conversion failed: {detail}"
+    )
+
+    TARGET_FILE_EXISTS = I18nMessage(
+        zh_cn="目标文件已存在: {path}",
+        en_us="Target file already exists: {path}",
     )

@@ -7,6 +7,7 @@
 """
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from typing import Any
 from pytuck import Session, Storage
 from pytuck.backends import is_valid_pytuck_database
 from pytuck.common.exceptions import DuplicateKeyError
+from pytuck.common.options import CsvBackendOptions, JsonBackendOptions
 
 from pytuck_view.base.exceptions import ServiceException
 from pytuck_view.base.i18n import DatabaseI18n, FileI18n
@@ -240,11 +242,20 @@ class DatabaseService:
                     FileI18n.INVALID_DATABASE_FILE, path=str(path_obj)
                 )
 
+            match engine:
+                case "csv":
+                    opts = CsvBackendOptions(field_size_limit=sys.maxsize)
+                case "json":
+                    opts = JsonBackendOptions(impl="orjson")
+                case _:
+                    opts = None
+
             # 创建 Storage 实例
             self.storage = Storage(
                 file_path=str(path_obj),
                 engine=engine or "binary",
                 auto_flush=False,  # 只读模式，不需要自动刷新
+                backend_options=opts
             )
 
             # 创建 Session 实例
@@ -545,21 +556,43 @@ class DatabaseService:
     def get_primary_key_column(self, table_name: str) -> str | None:
         """获取表的主键列名
 
+        无用户定义主键时返回 '_pytuck_rowid'（pytuck 隐式行号）作为后备。
+
         Args:
             table_name: 表名
 
         Returns:
-            主键列名，如果没有主键则返回 None
+            主键列名，或 '_pytuck_rowid'（隐式行号）
         """
         if not self.storage:
             raise RuntimeError("数据库未打开")
 
         try:
             table = self.storage.get_table(table_name)
-            return table.primary_key
+            # 有用户定义主键直接返回，否则用 pytuck 隐式行号兜底
+            return table.primary_key or "_pytuck_rowid"
         except Exception as e:
             logger.error(f"获取主键列失败 {table_name}: {simplify_exception(e)}")
             return None
+
+    def has_user_primary_key(self, table_name: str) -> bool:
+        """检查表是否有用户定义的主键（非隐式 _pytuck_rowid）
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            True 表示有用户定义的主键，False 表示使用隐式行号
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            table = self.storage.get_table(table_name)
+            return table.primary_key is not None
+        except Exception as e:
+            logger.error(f"获取主键信息失败 {table_name}: {simplify_exception(e)}")
+            return False
 
     def rename_table(self, old_name: str, new_name: str) -> None:
         """重命名表
@@ -732,5 +765,28 @@ class DatabaseService:
             logger.error(f"删除数据失败 {table_name}[{pk}]: {simplify_exception(e)}")
             raise ServiceException(
                 DatabaseI18n.DELETE_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def drop_table(self, table_name: str) -> None:
+        """删除整张表（包含所有数据）
+
+        Args:
+            table_name: 表名
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 删除失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            self.storage.drop_table(table_name)
+            self.storage.flush()
+        except Exception as e:
+            logger.error(f"删除表失败 {table_name}: {simplify_exception(e)}")
+            raise ServiceException(
+                DatabaseI18n.DROP_TABLE_FAILED,
                 error=simplify_exception(e),
             ) from e

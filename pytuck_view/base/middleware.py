@@ -18,7 +18,7 @@ from collections.abc import Callable, Coroutine
 from fastapi import Request, Response
 
 from ..utils.schemas import ContextInfo
-from .context import ContextManager
+from .context import context_manager
 
 
 def _parse_language(request: Request) -> str:
@@ -46,5 +46,5 @@ async def language_context_middleware(
 ) -> Response:
     """语言中间件"""
     context_info = ContextInfo(language=_parse_language(request))
-    with ContextManager(context_info):
+    with context_manager(context_info):
         return await call_next(request)
