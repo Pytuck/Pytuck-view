@@ -1,0 +1,9 @@
+# pytuck-view 开发依赖
+# 等效于 pyproject.toml 中的 [dependency-groups].dev
+# 用法：pip install -r requirements-dev.txt
+-r requirements.txt
+setuptools>=80.10.2
+ruff>=0.14.13
+mypy>=1.13.0
+pytest>=8.3.0
+invoke>=2.0.0

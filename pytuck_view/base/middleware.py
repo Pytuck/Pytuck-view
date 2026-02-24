@@ -18,10 +18,11 @@ from collections.abc import Callable, Coroutine
 from fastapi import Request, Response
 
 from ..utils.schemas import ContextInfo
-from .context import ContextManager
+from .context import context_manager
 
 
 def _parse_language(request: Request) -> str:
+    """从请求中解析语言参数"""
     lang = request.query_params.get("lang")
     if lang:
         return lang
@@ -46,5 +47,5 @@ async def language_context_middleware(
 ) -> Response:
     """语言中间件"""
     context_info = ContextInfo(language=_parse_language(request))
-    with ContextManager(context_info):
+    with context_manager(context_info):
         return await call_next(request)

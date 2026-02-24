@@ -535,10 +535,10 @@ wheels = [
 
 [[package]]
 name = "pytuck"
-version = "0.6.2"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/f7/91daa719c3f84fd47ddd4e377c22184c36302fb1450fdc1b35491f1de46d/pytuck-0.6.2-py3-none-any.whl", hash = "sha256:5c3d16a154260b926a0d2cd0de7aba4810438de4b9dd0f16d140431bc98f20d9", size = 141966, upload-time = "2026-02-01T09:00:36.059Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/97/f81b476337c512f87ae5be2f7652ee2f0c99bebe1104e92a78779f038fef/pytuck-0.7.1-py3-none-any.whl", hash = "sha256:2df665662729c781f2b3a295827770ce659b4618db4c028c1c8d146a6c360296", size = 159291, upload-time = "2026-02-10T11:11:36.963Z" },
 ]
 
 [package.optional-dependencies]
@@ -557,7 +557,6 @@ dependencies = [
     { name = "fastapi" },
     { name = "pydantic" },
     { name = "pytuck", extra = ["all"] },
-    { name = "setuptools" },
     { name = "uvicorn" },
 ]
 
@@ -579,8 +578,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pytuck", extras = ["all"], specifier = ">=0.6.2" },
-    { name = "setuptools", specifier = ">=80.9.0" },
+    { name = "pytuck", extras = ["all"], specifier = ">=0.7.1" },
     { name = "uvicorn", specifier = ">=0.20.0" },
 ]
 

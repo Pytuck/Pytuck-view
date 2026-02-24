@@ -14,6 +14,7 @@ from typing import Any
 
 from pytuck.backends import is_valid_pytuck_database
 
+from pytuck_view.base.constants import HOME_DIR
 from pytuck_view.base.exceptions import ServiceException
 from pytuck_view.base.i18n import FileI18n
 from pytuck_view.base.schemas import FileRecord
@@ -26,8 +27,8 @@ class FileManager:
 
     def __init__(self) -> None:
         # 配置文件存储在用户 home 目录下的 .pytuck-view 目录
-        self.config_dir = Path.home() / ".pytuck-view"
-        self.config_file: Path | None = self.config_dir / "recent_files.json"
+        self.config_dir = HOME_DIR
+        self.config_file: Path | None = HOME_DIR / "recent_files.json"
         self.open_files: dict[str, FileRecord] = {}  # 当前打开的文件
         self.temporary_files: dict[
             str, str
@@ -41,9 +42,8 @@ class FileManager:
         except Exception as e:
             # 如果无法创建配置目录，使用内存存储
             logger.warning(
-                "无法创建配置目录 %s, 将使用内存存储: %s",
-                self.config_dir,
-                simplify_exception(e),
+                f"无法创建配置目录 {self.config_dir}, 将使用内存存储。"
+                f"错误：{simplify_exception(e)}"
             )
             self.config_file = None
 
@@ -62,7 +62,7 @@ class FileManager:
                 else:
                     return []
         except Exception as e:
-            logger.warning("无法加载最近文件列表: %s", simplify_exception(e))
+            logger.warning(f"无法加载最近文件列表: {simplify_exception(e)}")
             return []
 
     def _save_recent_files(self, files: list[FileRecord]) -> None:
@@ -93,13 +93,13 @@ class FileManager:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.warning("无法保存最近文件列表: %s", simplify_exception(e))
+            logger.warning(f"无法保存最近文件列表: {simplify_exception(e)}")
 
     def get_recent_files(self, limit: int = 10) -> list[FileRecord]:
         """获取最近打开的文件列表"""
         files = self._load_recent_files()
-        # 按最后打开时间排序，最新的在前面
-        files.sort(key=lambda x: x.last_opened, reverse=True)
+        # 按路径字符串升序排序（固定顺序，便于查找）
+        files.sort(key=lambda x: x.path)
         return files[:limit]
 
     def open_file(self, file_path: str) -> FileRecord | None:
@@ -134,9 +134,37 @@ class FileManager:
 
         return file_record
 
+    def add_file_to_history(self, file_path: str) -> FileRecord:
+        """将文件添加到历史记录（不打开数据库连接）"""
+        path_obj = Path(file_path)
+
+        if not path_obj.exists():
+            raise ServiceException(FileI18n.FILE_NOT_FOUND, path=file_path)
+
+        is_valid, engine = is_valid_pytuck_database(path_obj)
+        if not is_valid:
+            raise ServiceException(FileI18n.INVALID_DATABASE_FILE, path=str(path_obj))
+
+        file_record = FileRecord(
+            file_id=str(uuid.uuid4()),
+            path=str(path_obj.absolute()),
+            name=path_obj.stem,
+            last_opened=datetime.now().isoformat(),
+            file_size=path_obj.stat().st_size,
+            engine_name=engine or "unknown",
+        )
+        self._add_to_history(file_record)
+        return file_record
+
     def _add_to_history(self, file_record: FileRecord) -> None:
         """将文件记录添加到历史记录"""
         files = self._load_recent_files()
+
+        # 查找同路径旧记录，保留其备注
+        for f in files:
+            if f.path == file_record.path and f.note:
+                file_record.note = f.note
+                break
 
         # 移除相同路径的旧记录
         files = [f for f in files if f.path != file_record.path]
@@ -168,6 +196,21 @@ class FileManager:
         self._save_recent_files(new_files)
         return True
 
+    def update_note(self, file_id: str, note: str) -> bool:
+        """更新历史记录中指定文件的备注
+
+        :param file_id: 文件 ID
+        :param note: 备注内容
+        :return: 是否找到并更新了记录
+        """
+        files = self._load_recent_files()
+        for f in files:
+            if f.file_id == file_id:
+                f.note = note
+                self._save_recent_files(files)
+                return True
+        return False
+
     def close_file(self, file_id: str) -> None:
         """关闭文件"""
         self.open_files.pop(file_id, None)
@@ -181,9 +224,7 @@ class FileManager:
                 except FileNotFoundError:
                     pass
             except Exception as e:
-                logger.warning(
-                    "无法删除临时文件 %s: %s", temp_path, simplify_exception(e)
-                )
+                logger.warning(f"无法删除临时文件 {temp_path}: {simplify_exception(e)}")
 
     def get_last_browse_directory(self) -> str | None:
         """获取最后浏览的目录"""
@@ -223,9 +264,10 @@ class FileManager:
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.warning("更新最后浏览目录失败: %s", simplify_exception(e))
+            logger.warning(f"更新最后浏览目录失败: {simplify_exception(e)}")
 
-    def discover_files(self, directory: str | None = None) -> list[dict[str, Any]]:
+    @staticmethod
+    def discover_files(directory: str | None = None) -> list[dict[str, Any]]:
         """在指定目录中发现 pytuck 文件"""
         target_dir = Path.cwd() / "databases" if directory is None else Path(directory)
 
@@ -254,10 +296,10 @@ class FileManager:
                     )
                 except Exception as e:
                     logger.warning(
-                        "无法读取文件信息 %s: %s", file_path, simplify_exception(e)
+                        f"无法读取文件信息 {file_path}: {simplify_exception(e)}"
                     )
         except Exception as e:
-            logger.warning("无法扫描目录 %s: %s", target_dir, simplify_exception(e))
+            logger.warning(f"无法扫描目录 {target_dir}: {simplify_exception(e)}")
 
         return discovered_files
 
