@@ -177,7 +177,7 @@ async def get_table_rows(
     )
 
 
-def _guess_type(s: str) -> Any:
+def _guess_type(s: str) -> int | float | bool | str:
     """猜测类型"""
     if not s:
         return s
@@ -214,7 +214,9 @@ def _parse_filter_params(query_params: dict[str, str]) -> list[FilterItem]:
             op = "eq"
 
         if op == "in":
-            value: Any = [_guess_type(x.strip()) for x in v.split(",") if x.strip()]
+            value: int | float | bool | str | list[int | float | bool | str] = [
+                _guess_type(x.strip()) for x in v.split(",") if x.strip()
+            ]
         else:
             value = _guess_type(v)
 

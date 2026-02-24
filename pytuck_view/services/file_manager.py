@@ -224,8 +224,7 @@ class FileManager:
                 except FileNotFoundError:
                     pass
             except Exception as e:
-                logger.warning(
-                    f"无法删除临时文件 {temp_path}: {simplify_exception(e)}")
+                logger.warning(f"无法删除临时文件 {temp_path}: {simplify_exception(e)}")
 
     def get_last_browse_directory(self) -> str | None:
         """获取最后浏览的目录"""

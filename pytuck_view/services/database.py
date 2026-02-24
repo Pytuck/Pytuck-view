@@ -8,14 +8,16 @@
 
 import ctypes
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pytuck import Session, Storage
+from pytuck import Column, Session, Storage
 from pytuck.backends import is_valid_pytuck_database
 from pytuck.common.exceptions import DuplicateKeyError
 from pytuck.common.options import CsvBackendOptions, JsonBackendOptions
+from pytuck.core.storage import Table
 
 from pytuck_view.base.exceptions import ServiceException
 from pytuck_view.base.i18n import DatabaseI18n, FileI18n
@@ -46,23 +48,21 @@ class ColumnInfo:
 # ========== 列提取辅助函数 ==========
 
 
-def _extract_column_from_object(col_name: str, col_obj: Any) -> dict[str, Any]:
+def _extract_column_from_object(col_name: str, col_obj: Column) -> dict[str, Any]:
     """从列对象中提取列信息（字典格式的列定义）"""
+    col_type_str = (
+        col_obj.col_type.__name__
+        if isinstance(col_obj.col_type, type)
+        else str(col_obj.col_type)
+    )
     return {
         "name": str(col_name),
-        "type": str(getattr(col_obj, "col_type", getattr(col_obj, "type", "unknown"))),
-        "nullable": bool(getattr(col_obj, "nullable", True)),
-        "primary_key": bool(getattr(col_obj, "primary_key", False)),
-        "default_value": (
-            str(getattr(col_obj, "default", None))
-            if getattr(col_obj, "default", None) is not None
-            else None
-        ),
-        "comment": (
-            str(getattr(col_obj, "comment", ""))
-            if getattr(col_obj, "comment", None)
-            else None
-        ),
+        "type": col_type_str,
+        "nullable": col_obj.nullable,
+        "primary_key": col_obj.primary_key,
+        "default_value": str(col_obj.default) if col_obj.default is not None else None,
+        "comment": str(col_obj.comment) if col_obj.comment else None,
+        # Column 没有 autoincrement/unique 属性，保留 getattr 兼容
         "autoincrement": bool(getattr(col_obj, "autoincrement", False)),
         "unique": bool(getattr(col_obj, "unique", False)),
     }
@@ -86,7 +86,7 @@ def _extract_column_from_dict(col_def: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _extract_columns_from_table(table: Any) -> list[dict[str, Any]]:
+def _extract_columns_from_table(table: Table) -> list[dict[str, Any]]:
     """从表对象中提取所有列信息"""
     columns: list[dict[str, Any]] = []
 
@@ -107,7 +107,7 @@ def _extract_columns_from_table(table: Any) -> list[dict[str, Any]]:
 
 
 def _get_row_count_from_table(
-    table: Any, storage: Storage | None, table_name: str
+    table: Table, storage: Storage | None, table_name: str
 ) -> int:
     """从表对象中获取行数"""
     # 优先使用 storage.count_rows（推荐方式）
@@ -124,7 +124,7 @@ def _get_row_count_from_table(
     return 0
 
 
-def _extract_table_comment(table: Any) -> str | None:
+def _extract_table_comment(table: Table) -> str | None:
     """提取表备注"""
     try:
         if hasattr(table, "comment"):
@@ -139,7 +139,7 @@ def _extract_table_comment(table: Any) -> str | None:
 # ========== 过滤器操作符处理 ==========
 
 
-_FILTER_OPERATORS: dict[str, Any] = {
+_FILTER_OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
     "eq": lambda row_val, val: row_val == val,
     "gt": lambda row_val, val: float(row_val or 0) > float(val or 0),
     "gte": lambda row_val, val: float(row_val or 0) >= float(val or 0),
@@ -248,9 +248,7 @@ class DatabaseService:
                     # csv.field_size_limit() 接受 C long，Windows 上为 32 位
                     # ctypes.sizeof(ctypes.c_long) 获取平台 C long 字节数
                     _max_c_long = 2 ** (8 * ctypes.sizeof(ctypes.c_long) - 1) - 1
-                    opts = CsvBackendOptions(
-                        field_size_limit=_max_c_long
-                    )
+                    opts = CsvBackendOptions(field_size_limit=_max_c_long)
                 case "json":
                     opts = JsonBackendOptions(impl="orjson")
                 case _:
@@ -261,7 +259,7 @@ class DatabaseService:
                 file_path=str(path_obj),
                 engine=engine or "binary",
                 auto_flush=False,  # 只读模式，不需要自动刷新
-                backend_options=opts
+                backend_options=opts,
             )
 
             # 创建 Session 实例
@@ -315,7 +313,7 @@ class DatabaseService:
         try:
             # 尝试获取表对象
             if hasattr(self.storage, "get_table"):
-                table = self.storage.get_table(table_name)
+                table: Table = self.storage.get_table(table_name)
                 if table:
                     return self._extract_table_info(table, table_name)
 
@@ -326,7 +324,7 @@ class DatabaseService:
             logger.error(f"获取表信息失败 {table_name}: {simplify_exception(e)}")
             return self._get_placeholder_table_info(table_name)
 
-    def _extract_table_info(self, table: Any, table_name: str) -> TableInfo:
+    def _extract_table_info(self, table: Table, table_name: str) -> TableInfo:
         """从 pytuck 表对象提取信息"""
         try:
             columns = _extract_columns_from_table(table)
@@ -402,7 +400,7 @@ class DatabaseService:
         sort_by: str | None,
         order: str,
         filters: list[dict[str, Any]] | None,
-    ) -> Any:
+    ) -> dict[str, Any]:
         """执行表数据查询"""
         if not isinstance(self.storage, Storage):
             raise RuntimeError("数据库未打开")
@@ -426,25 +424,14 @@ class DatabaseService:
             filters=filters_dict,
         )
 
-    def _parse_query_result(self, result: Any) -> tuple[list[Any], int]:
+    def _parse_query_result(self, result: dict[str, Any]) -> tuple[list[Any], int]:
         """解析查询结果，返回 (rows, total)"""
         rows: list[Any] = []
         total: int = 0
 
-        if isinstance(result, tuple) and len(result) >= 2:
-            # 返回 (rows, total) 格式
-            rows_data, total_data = result[:2]
-            rows = list(rows_data) if rows_data else []
-            total = int(total_data) if total_data is not None else 0
-        elif isinstance(result, dict):
-            # 返回字典格式
-            rows = list(result.get("records", result.get("rows", [])) or [])
-            total_val = result.get("total_count", result.get("total", len(rows)))
-            total = int(total_val) if total_val is not None else 0
-        else:
-            # 其他情况，假设返回行列表
-            rows = list(result) if result else []
-            total = len(rows)
+        rows = list(result.get("records", result.get("rows", [])) or [])
+        total_val = result.get("total_count", result.get("total", len(rows)))
+        total = int(total_val) if total_val is not None else 0
 
         return rows, total
 
@@ -508,7 +495,7 @@ class DatabaseService:
             return {
                 "server_side_pagination": self.supports_server_side_pagination(),
                 "supports_filters": hasattr(self.storage, "query_table_data"),
-                "backend_name": getattr(self.storage, "engine", "unknown"),
+                "backend_name": self.storage.engine_name,
                 "status": "connected",
             }
         except Exception as e:
@@ -550,7 +537,7 @@ class DatabaseService:
                 "file_path": self.file_path,
                 "file_size": os.path.getsize(self.file_path) if self.file_path else 0,
                 "tables_count": len(real_tables),
-                "engine": getattr(self.storage, "engine", "unknown"),
+                "engine": self.storage.engine_name,
                 "status": "connected",
                 "capabilities": capabilities,
             }

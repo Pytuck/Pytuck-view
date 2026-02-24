@@ -12,9 +12,9 @@ import time
 import webbrowser
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
 
 import uvicorn
+from fastapi import FastAPI
 
 from pytuck_view import __version__
 from pytuck_view.utils.logger import init_logging, logger
@@ -39,7 +39,7 @@ def open_browser(url: str, delay: float = 1.5) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: Any) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期管理"""
     logger.info("🚀 pytuck-view 正在启动...")
     yield
