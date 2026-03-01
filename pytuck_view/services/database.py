@@ -16,7 +16,7 @@ from typing import Any
 
 from pytuck import Column, Session, Storage
 from pytuck.backends import is_valid_pytuck_database
-from pytuck.common.exceptions import DuplicateKeyError
+from pytuck.common.exceptions import DuplicateKeyError, SchemaError as PytuckSchemaError
 from pytuck.common.options import CsvBackendOptions, JsonBackendOptions
 from pytuck.core.storage import Table
 
@@ -933,6 +933,15 @@ class DatabaseService:
             column = columns[0]
             self.storage.add_column(table_name, column, default_value)
             self.storage.flush()
+        except PytuckSchemaError as e:
+            logger.warning(
+                f"添加列 Schema 错误 {table_name}.{column_def.get('name')}: "
+                f"{simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.ADD_COLUMN_SCHEMA_ERROR,
+                error=simplify_exception(e),
+            ) from e
         except Exception as e:
             logger.error(
                 f"添加列失败 {table_name}.{column_def.get('name')}: "

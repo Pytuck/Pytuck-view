@@ -427,6 +427,11 @@ class DataEditUI(BaseUIClass):
         zh_cn="不能删除主键列",
         en_us="Cannot delete primary key column",
     )
+    NON_NULLABLE_NEEDS_DEFAULT = I18nMessage(
+        key="nonNullableNeedsDefault",
+        zh_cn="非空列必须提供默认值（表中已有数据时）",
+        en_us="Non-nullable column requires a default value when table has data",
+    )
 
 
 class ConvertUI(BaseUIClass):

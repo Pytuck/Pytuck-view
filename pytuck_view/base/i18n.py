@@ -247,6 +247,10 @@ class DatabaseI18n:
         zh_cn="列添加成功",
         en_us="Column added successfully",
     )
+    ADD_COLUMN_SCHEMA_ERROR = I18nMessage(
+        zh_cn="无法添加列: {error}",
+        en_us="Cannot add column: {error}",
+    )
     ADD_COLUMN_FAILED = I18nMessage(
         zh_cn="添加列失败: {error}",
         en_us="Add column failed: {error}",
