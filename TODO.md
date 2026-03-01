@@ -84,3 +84,12 @@
 ### 远期（P4）
 6. **P4**：数据导入导出
 7. **P4**：数据库文件转换（需 pytuck 支持）
+
+---
+
+## 已知 pytuck 层面问题
+
+> 以下问题需要在 pytuck 库中排查/修复，pytuck-view 暂无法处理。
+
+- [ ] **引擎转换后数据丢失**：CSV → Binary 转换后文件体积增大，但打开转换后的文件只显示表名，无法查看数据。疑似 `migrate_engine` 在转换时 lazy loading 未正确触发，或目标后端 `save_full` 未持久化行数据。
+- [ ] **flush/load 循环可能篡改数据**：添加带默认值的列后，flush + 重新 load 过程中，部分后端可能对缺失字段自动填充默认值，导致原本为 null 的记录被意外赋值。需确认各后端（binary/json/csv）的 save/load 行为一致性。
