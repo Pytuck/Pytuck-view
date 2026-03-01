@@ -51,6 +51,7 @@
         <div v-if="state.currentPage === 'file-selector'" class="file-selector">
             <header class="header">
                 <h1>📊 pytuck-view</h1>
+                <p v-if="state.appVersion" class="app-version">v{{ state.appVersion }}</p>
                 <p>{{ t('common.selectDatabaseHint') }}</p>
             </header>
 

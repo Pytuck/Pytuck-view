@@ -96,6 +96,13 @@ body {
     color: #007bff;
 }
 
+.app-version {
+    font-size: 12px;
+    color: #aaa;
+    margin: 2px 0 0;
+    letter-spacing: 0.5px;
+}
+
 .header.header-compact h1 {
     font-size: 18px;
 }

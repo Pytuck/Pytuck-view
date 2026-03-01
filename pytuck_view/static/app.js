@@ -215,6 +215,7 @@ function createApiClient(state) {
             // ========== 应用状态 ==========
             const state = reactive({
                 currentPage: 'file-selector',
+                appVersion: '',
                 recentFiles: [],
                 currentDatabase: null,
                 tables: [],
@@ -1443,6 +1444,14 @@ function createApiClient(state) {
             // ========== 生命周期 ==========
             onMounted(async () => {
                 await loadRecentFiles();
+                // 获取版本号
+                try {
+                    var res = await fetch('/api/version');
+                    if (res.ok) {
+                        var data = await res.json();
+                        state.appVersion = data.version || '';
+                    }
+                } catch (_e) { /* 忽略 */ }
             });
 
             // ========== 导出到模板 ==========

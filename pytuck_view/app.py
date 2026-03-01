@@ -76,4 +76,10 @@ def create_app() -> FastAPI:
         """健康检查端点"""
         return {"status": "ok", "service": "pytuck-view"}
 
+    # 版本信息端点
+    @app.get("/api/version")
+    async def get_version() -> dict[str, str]:
+        """返回当前版本号"""
+        return {"version": __version__}
+
     return app
