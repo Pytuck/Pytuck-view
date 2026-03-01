@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from pytuck_view.base.constants import HOME_DIR
 from pytuck_view.base.frontend_i18n import ALL_UI_CLASSES
 from pytuck_view.utils.logger import logger
 from pytuck_view.utils.schemas import I18nMessage
@@ -12,7 +13,7 @@ def generate_locale_json(locale: str) -> dict[str, str]:
     :param locale: 语言代码(zh_cn/en_us)
     :return: key -> 翻译文本的字典
     """
-    translations = {}
+    translations: dict[str, str] = {}
 
     for ui_class in ALL_UI_CLASSES:
         prefix = ui_class.__i18n_prefix__
@@ -27,7 +28,7 @@ def generate_locale_json(locale: str) -> dict[str, str]:
                 # 直接使用 prefix.key 拼接，无任何转换
                 key = f"{prefix}.{attr_value.key}"
                 # 获取对应语言的翻译
-                translation = getattr(attr_value, locale)
+                translation: str = getattr(attr_value, locale)
                 translations[key] = translation
 
     return translations
@@ -57,11 +58,12 @@ def generate_all_locales(output_dir: Path) -> None:
         logger.info(f"✓ 生成前端翻译: {locale}.json ({len(translations)} 个)")
 
 
-def setup_all(root_path: Path) -> None:
+def setup_all() -> None:
     """前置操作"""
 
     try:
-        locales_dir = root_path / "static" / "locales"
+        HOME_DIR.mkdir(exist_ok=True)
+        locales_dir = HOME_DIR / "locales"
         generate_all_locales(locales_dir)
     except Exception as e:
         logger.warning(f"警告: 生成前端翻译文件失败: {e}")

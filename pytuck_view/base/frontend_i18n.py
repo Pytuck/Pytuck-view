@@ -106,6 +106,12 @@ class FileUI(BaseUIClass):
         en_us="Please select a file to view its content",
     )
 
+    # 文件备注
+    NOTE = I18nMessage(key="note", zh_cn="备注", en_us="Note")
+    NOTE_PLACEHOLDER = I18nMessage(
+        key="notePlaceholder", zh_cn="添加备注...", en_us="Add note..."
+    )
+
     # 文件浏览器
     SELECT_DATABASE_FILE = I18nMessage(
         key="selectDatabaseFile", zh_cn="选择数据库文件", en_us="Select Database File"
@@ -246,6 +252,11 @@ class DataEditUI(BaseUIClass):
         en_us="No primary key, edit/delete limited",
     )
     PRIMARY_KEY = I18nMessage(key="primaryKey", zh_cn="主键", en_us="Primary Key")
+    USING_INTERNAL_ROWID = I18nMessage(
+        key="usingInternalRowId",
+        zh_cn="使用内部行号",
+        en_us="Using internal row ID",
+    )
 
     # 记录视图导航
     PREV_RECORD = I18nMessage(key="prevRecord", zh_cn="上一条", en_us="Previous")
@@ -254,9 +265,6 @@ class DataEditUI(BaseUIClass):
         key="recordCounter",
         zh_cn="第 {current} / {total} 条",
         en_us="Record {current} of {total}",
-    )
-    RETURN_TABLE_VIEW = I18nMessage(
-        key="returnTableView", zh_cn="返回表格", en_us="Back to Table"
     )
 
     # 分页
@@ -269,6 +277,14 @@ class DataEditUI(BaseUIClass):
         zh_cn="第 {current} / {total} 页",
         en_us="Page {current} of {total}",
     )
+    TOTAL_ROWS = I18nMessage(
+        key="totalRows",
+        zh_cn="共 {total} 条",
+        en_us="Total {total}",
+    )
+    ROWS_PER_PAGE = I18nMessage(key="rowsPerPage", zh_cn="每页", en_us="Per page")
+    JUMP_TO_PAGE = I18nMessage(key="jumpToPage", zh_cn="跳至", en_us="Go to")
+    PAGE_SUFFIX = I18nMessage(key="pageSuffix", zh_cn="页", en_us="")
 
     # 数据状态
     NO_DATA = I18nMessage(key="noData", zh_cn="暂无数据", en_us="No data")
@@ -322,6 +338,60 @@ class DataEditUI(BaseUIClass):
     TABLE_NAME_REQUIRED = I18nMessage(
         key="tableNameRequired", zh_cn="表名不能为空", en_us="Table name is required"
     )
+    DELETE_TABLE = I18nMessage(key="deleteTable", zh_cn="删除表", en_us="Delete Table")
+    CONFIRM_DELETE_TABLE = I18nMessage(
+        key="confirmDeleteTable",
+        zh_cn=("确定要删除表 '{name}' 吗？此操作不可恢复，表中所有数据将被永久删除。"),
+        en_us=(
+            "Are you sure you want to delete table '{name}'? "
+            "This action cannot be undone. "
+            "All data in this table will be permanently deleted."
+        ),
+    )
     FIELD_REQUIRED = I18nMessage(
         key="fieldRequired", zh_cn="不能为空", en_us="is required"
+    )
+
+    # 列可见性
+    COLUMNS_TOGGLE = I18nMessage(key="columnsToggle", zh_cn="列显示", en_us="Columns")
+
+    # 侧边栏
+    SEARCH_TABLE = I18nMessage(
+        key="searchTable", zh_cn="搜索表名...", en_us="Search tables..."
+    )
+    COLLAPSE_SIDEBAR = I18nMessage(
+        key="collapseSidebar", zh_cn="收起侧边栏", en_us="Collapse sidebar"
+    )
+    EXPAND_SIDEBAR = I18nMessage(
+        key="expandSidebar", zh_cn="展开侧边栏", en_us="Expand sidebar"
+    )
+
+
+class ConvertUI(BaseUIClass):
+    """引擎转换 UI 文本"""
+
+    __i18n_prefix__ = "convert"
+
+    CONVERT_ENGINE = I18nMessage(
+        key="convertEngine", zh_cn="引擎转换", en_us="Convert Engine"
+    )
+    SOURCE_FILE = I18nMessage(key="sourceFile", zh_cn="源文件", en_us="Source File")
+    TARGET_ENGINE = I18nMessage(
+        key="targetEngine", zh_cn="目标引擎", en_us="Target Engine"
+    )
+    SAVE_PATH = I18nMessage(key="savePath", zh_cn="保存路径", en_us="Save Path")
+    START_CONVERT = I18nMessage(
+        key="startConvert", zh_cn="开始转换", en_us="Start Convert"
+    )
+    CONVERTING = I18nMessage(key="converting", zh_cn="转换中...", en_us="Converting...")
+    SELECT_ENGINE = I18nMessage(
+        key="selectEngine", zh_cn="请选择目标引擎", en_us="Select target engine"
+    )
+    CONVERT_SUCCESS = I18nMessage(
+        key="convertSuccess",
+        zh_cn="转换完成：{tables} 张表，{records} 条记录",
+        en_us="Conversion completed: {tables} tables, {records} records",
+    )
+    CONVERT_FAILED = I18nMessage(
+        key="convertFailed", zh_cn="转换失败", en_us="Conversion failed"
     )
