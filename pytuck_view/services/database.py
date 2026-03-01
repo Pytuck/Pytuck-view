@@ -10,6 +10,7 @@ import ctypes
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -103,6 +104,47 @@ def _extract_columns_from_table(table: Table) -> list[dict[str, Any]]:
             if isinstance(col_def, dict):
                 columns.append(_extract_column_from_dict(col_def))
 
+    return columns
+
+
+# ========== 列类型映射 ==========
+
+_COLUMN_TYPE_MAP: dict[str, type] = {
+    "int": int,
+    "float": float,
+    "str": str,
+    "bool": bool,
+    "list": list,
+    "dict": dict,
+    "bytes": bytes,
+    "datetime": datetime,
+    "date": date,
+    "timedelta": timedelta,
+}
+
+
+def _build_columns_from_defs(columns_def: list[dict[str, Any]]) -> list[Column]:
+    """将列定义字典列表转换为 Column 对象列表
+
+    Args:
+        columns_def: 列定义列表，每个元素包含 name、col_type、nullable 等
+
+    Returns:
+        Column 对象列表
+    """
+    columns: list[Column] = []
+    for col_def in columns_def:
+        col_type_str = col_def.get("col_type", "str")
+        col_type = _COLUMN_TYPE_MAP.get(col_type_str, str)
+        col = Column(
+            col_type,
+            name=col_def.get("name"),
+            nullable=col_def.get("nullable", True),
+            primary_key=col_def.get("primary_key", False),
+            default=col_def.get("default"),
+            comment=col_def.get("comment"),
+        )
+        columns.append(col)
     return columns
 
 
@@ -781,5 +823,148 @@ class DatabaseService:
             logger.error(f"删除表失败 {table_name}: {simplify_exception(e)}")
             raise ServiceException(
                 DatabaseI18n.DROP_TABLE_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def clear_table(self, table_name: str) -> int:
+        """清空表数据（保留表结构）
+
+        通过 drop + create 策略实现，保留原有的列定义和表备注。
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            被清空的行数
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 清空失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            table = self.storage.get_table(table_name)
+            # 保存表结构信息
+            columns = list(table.columns.values())
+            comment = table.comment if hasattr(table, "comment") else None
+            row_count = _get_row_count_from_table(table, self.storage, table_name)
+
+            # drop + create 重建空表
+            self.storage.drop_table(table_name)
+            self.storage.create_table(table_name, columns, comment)
+            self.storage.flush()
+
+            return row_count
+        except Exception as e:
+            logger.error(f"清空表失败 {table_name}: {simplify_exception(e)}")
+            raise ServiceException(
+                DatabaseI18n.CLEAR_TABLE_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def create_table(
+        self,
+        table_name: str,
+        columns_def: list[dict[str, Any]],
+        comment: str | None = None,
+    ) -> int:
+        """创建新表
+
+        Args:
+            table_name: 表名
+            columns_def: 列定义列表，每个元素包含 name、col_type、nullable 等
+            comment: 表备注
+
+        Returns:
+            创建的列数
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 创建失败或表已存在
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        # 检查表是否已存在
+        if table_name in self.storage.tables:
+            raise ServiceException(
+                DatabaseI18n.TABLE_ALREADY_EXISTS,
+                table_name=table_name,
+            )
+
+        try:
+            columns = _build_columns_from_defs(columns_def)
+            self.storage.create_table(table_name, columns, comment)
+            self.storage.flush()
+            return len(columns)
+        except ServiceException:
+            raise
+        except Exception as e:
+            logger.error(f"创建表失败 {table_name}: {simplify_exception(e)}")
+            raise ServiceException(
+                DatabaseI18n.CREATE_TABLE_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def add_column(
+        self,
+        table_name: str,
+        column_def: dict[str, Any],
+        default_value: Any = None,
+    ) -> None:
+        """向表添加列
+
+        Args:
+            table_name: 表名
+            column_def: 列定义字典
+            default_value: 为现有记录填充的默认值
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 添加失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            columns = _build_columns_from_defs([column_def])
+            column = columns[0]
+            self.storage.add_column(table_name, column, default_value)
+            self.storage.flush()
+        except Exception as e:
+            logger.error(
+                f"添加列失败 {table_name}.{column_def.get('name')}: "
+                f"{simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.ADD_COLUMN_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def drop_column(self, table_name: str, column_name: str) -> None:
+        """从表中删除列
+
+        Args:
+            table_name: 表名
+            column_name: 列名
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 删除失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            self.storage.drop_column(table_name, column_name)
+            self.storage.flush()
+        except Exception as e:
+            logger.error(
+                f"删除列失败 {table_name}.{column_name}: {simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.DROP_COLUMN_FAILED,
                 error=simplify_exception(e),
             ) from e

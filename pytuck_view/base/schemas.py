@@ -131,6 +131,34 @@ class DeleteRowRequest(BaseModel):
     pk: Any = Field(..., description="主键值")
 
 
+class CreateColumnDef(BaseModel):
+    """创建列时的列定义"""
+
+    name: str = Field(..., min_length=1, description="列名")
+    col_type: str = Field(
+        "str", description="列类型（int/float/str/bool/list/dict/bytes）"
+    )
+    nullable: bool = Field(True, description="是否可空")
+    primary_key: bool = Field(False, description="是否为主键")
+    default: Any = Field(None, description="默认值")
+    comment: str | None = Field(None, description="列备注")
+
+
+class CreateTableRequest(BaseModel):
+    """新建表请求"""
+
+    name: str = Field(..., min_length=1, description="表名")
+    columns: list[CreateColumnDef] = Field(..., min_length=1, description="列定义列表")
+    comment: str | None = Field(None, description="表备注")
+
+
+class AddColumnRequest(BaseModel):
+    """添加列请求"""
+
+    column: CreateColumnDef = Field(..., description="列定义")
+    default_value: Any = Field(None, description="为现有记录填充的默认值")
+
+
 # ========== 文件相关响应数据模型 ==========
 
 
@@ -304,6 +332,34 @@ class DropTableData(BaseModel):
 
     deleted: bool = Field(..., description="是否删除成功")
     table_name: str = Field(..., description="被删除的表名")
+
+
+class CreateTableData(BaseModel):
+    """新建表响应数据"""
+
+    table_name: str = Field(..., description="表名")
+    columns_count: int = Field(..., description="列数量")
+
+
+class ClearTableData(BaseModel):
+    """清空表响应数据"""
+
+    table_name: str = Field(..., description="表名")
+    cleared_rows: int = Field(..., description="被清空的行数")
+
+
+class AddColumnData(BaseModel):
+    """添加列响应数据"""
+
+    table_name: str = Field(..., description="表名")
+    column_name: str = Field(..., description="列名")
+
+
+class DropColumnData(BaseModel):
+    """删除列响应数据"""
+
+    table_name: str = Field(..., description="表名")
+    column_name: str = Field(..., description="被删除的列名")
 
 
 class TablePrimaryKeyData(BaseModel):

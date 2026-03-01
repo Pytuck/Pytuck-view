@@ -9,10 +9,16 @@ from pytuck_view.base.exceptions import ServiceException
 from pytuck_view.base.i18n import ApiSummaryI18n, DatabaseI18n
 from pytuck_view.base.response import ResponseUtil
 from pytuck_view.base.schemas import (
+    AddColumnData,
+    AddColumnRequest,
     ApiResponse,
+    ClearTableData,
     ColumnSchema,
+    CreateTableData,
+    CreateTableRequest,
     DeleteRowData,
     DeleteRowRequest,
+    DropColumnData,
     DropTableData,
     FilterItem,
     GetTableSchemaData,
@@ -384,6 +390,94 @@ async def drop_table(file_id: str, table_name: str) -> SuccessResult[DropTableDa
     return SuccessResult(
         data=DropTableData(deleted=True, table_name=table_name),
         i18n_msg=DatabaseI18n.DROP_TABLE_SUCCESS,
+    )
+
+
+@router.post(
+    "/tables/{file_id}/{table_name}/clear",
+    summary="清空表数据",
+    response_model=ApiResponse[ClearTableData],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.CLEAR_TABLE)
+async def clear_table(file_id: str, table_name: str) -> SuccessResult[ClearTableData]:
+    """清空表中所有数据（保留表结构）"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    cleared_rows = db_service.clear_table(table_name)
+
+    return SuccessResult(
+        data=ClearTableData(table_name=table_name, cleared_rows=cleared_rows),
+        i18n_msg=DatabaseI18n.CLEAR_TABLE_SUCCESS,
+    )
+
+
+@router.post(
+    "/tables/{file_id}",
+    summary="新建表",
+    response_model=ApiResponse[CreateTableData],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.CREATE_TABLE)
+async def create_table(
+    file_id: str, body: CreateTableRequest
+) -> SuccessResult[CreateTableData]:
+    """创建新表"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    columns_def = [col.model_dump() for col in body.columns]
+    columns_count = db_service.create_table(body.name, columns_def, body.comment)
+
+    return SuccessResult(
+        data=CreateTableData(table_name=body.name, columns_count=columns_count),
+        i18n_msg=DatabaseI18n.CREATE_TABLE_SUCCESS,
+    )
+
+
+@router.post(
+    "/columns/{file_id}/{table_name}",
+    summary="添加列",
+    response_model=ApiResponse[AddColumnData],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.ADD_COLUMN)
+async def add_column(
+    file_id: str, table_name: str, body: AddColumnRequest
+) -> SuccessResult[AddColumnData]:
+    """向表添加新列"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    column_def = body.column.model_dump()
+    db_service.add_column(table_name, column_def, body.default_value)
+
+    return SuccessResult(
+        data=AddColumnData(table_name=table_name, column_name=body.column.name),
+        i18n_msg=DatabaseI18n.ADD_COLUMN_SUCCESS,
+    )
+
+
+@router.delete(
+    "/columns/{file_id}/{table_name}/{column_name}",
+    summary="删除列",
+    response_model=ApiResponse[DropColumnData],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.DROP_COLUMN)
+async def drop_column(
+    file_id: str, table_name: str, column_name: str
+) -> SuccessResult[DropColumnData]:
+    """从表中删除列"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    db_service.drop_column(table_name, column_name)
+
+    return SuccessResult(
+        data=DropColumnData(table_name=table_name, column_name=column_name),
+        i18n_msg=DatabaseI18n.DROP_COLUMN_SUCCESS,
     )
 
 

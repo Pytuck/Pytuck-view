@@ -48,6 +48,10 @@ class ApiSummaryI18n:
         zh_cn="获取可用引擎列表", en_us="Get available engines"
     )
     CONVERT_ENGINE = I18nMessage(zh_cn="引擎转换", en_us="Convert engine")
+    CREATE_TABLE = I18nMessage(zh_cn="新建表", en_us="Create table")
+    CLEAR_TABLE = I18nMessage(zh_cn="清空表", en_us="Clear table")
+    ADD_COLUMN = I18nMessage(zh_cn="添加列", en_us="Add column")
+    DROP_COLUMN = I18nMessage(zh_cn="删除列", en_us="Drop column")
 
 
 class FileI18n:
@@ -212,6 +216,48 @@ class DatabaseI18n:
     DROP_TABLE_FAILED = I18nMessage(
         zh_cn="删除表失败: {error}",
         en_us="Drop table failed: {error}",
+    )
+
+    # 新建表
+    CREATE_TABLE_SUCCESS = I18nMessage(
+        zh_cn="表创建成功",
+        en_us="Table created successfully",
+    )
+    CREATE_TABLE_FAILED = I18nMessage(
+        zh_cn="创建表失败: {error}",
+        en_us="Create table failed: {error}",
+    )
+    TABLE_ALREADY_EXISTS = I18nMessage(
+        zh_cn="表 '{table_name}' 已存在",
+        en_us="Table '{table_name}' already exists",
+    )
+
+    # 清空表
+    CLEAR_TABLE_SUCCESS = I18nMessage(
+        zh_cn="表数据已清空",
+        en_us="Table data cleared successfully",
+    )
+    CLEAR_TABLE_FAILED = I18nMessage(
+        zh_cn="清空表失败: {error}",
+        en_us="Clear table failed: {error}",
+    )
+
+    # 列操作
+    ADD_COLUMN_SUCCESS = I18nMessage(
+        zh_cn="列添加成功",
+        en_us="Column added successfully",
+    )
+    ADD_COLUMN_FAILED = I18nMessage(
+        zh_cn="添加列失败: {error}",
+        en_us="Add column failed: {error}",
+    )
+    DROP_COLUMN_SUCCESS = I18nMessage(
+        zh_cn="列删除成功",
+        en_us="Column deleted successfully",
+    )
+    DROP_COLUMN_FAILED = I18nMessage(
+        zh_cn="删除列失败: {error}",
+        en_us="Drop column failed: {error}",
     )
 
 
