@@ -271,6 +271,24 @@ function createApiClient(state) {
                 showColumnPicker: false,      // 是否显示列选择器
                 // 成功消息
                 successMessage: null,         // 成功消息（绿色 toast）
+                // 新建表弹窗状态
+                showCreateTableModal: false,
+                createTableForm: {
+                    name: '',
+                    comment: '',
+                    columns: [{ name: '', col_type: 'str', nullable: true, primary_key: false, default: null, comment: '' }]
+                },
+                // 添加列弹窗状态
+                showAddColumnModal: false,
+                addColumnForm: {
+                    name: '',
+                    col_type: 'str',
+                    nullable: true,
+                    primary_key: false,
+                    default: null,
+                    comment: '',
+                    default_value: null
+                },
             });
 
             // ========== 引擎转换状态 ==========
@@ -784,6 +802,195 @@ function createApiClient(state) {
                 }
             }
 
+            // ========== 清空表 ==========
+
+            async function clearTable() {
+                if (!state.currentDatabase) return;
+                var tableName = state.tableEditForm.originalName;
+
+                var msg = t('dataEdit.confirmClearTable').replace('{name}', tableName);
+                if (!confirm(msg)) return;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/tables/${state.currentDatabase.file_id}/${tableName}/clear`, {
+                        method: 'POST'
+                    });
+
+                    closeTableEditModal();
+
+                    // 如果清空的是当前选中的表，刷新数据
+                    if (state.currentTable === tableName) {
+                        state.tableData = [];
+                        state.totalRows = 0;
+                        await loadTableSchema(tableName);
+                    }
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 新建表 ==========
+
+            function openCreateTableModal() {
+                state.createTableForm = {
+                    name: '',
+                    comment: '',
+                    columns: [{ name: '', col_type: 'str', nullable: true, primary_key: false, default: null, comment: '' }]
+                };
+                state.showCreateTableModal = true;
+            }
+
+            function closeCreateTableModal() {
+                state.showCreateTableModal = false;
+            }
+
+            function addColumnDef() {
+                state.createTableForm.columns.push({
+                    name: '', col_type: 'str', nullable: true, primary_key: false, default: null, comment: ''
+                });
+            }
+
+            function removeColumnDef(index) {
+                if (state.createTableForm.columns.length <= 1) return;
+                state.createTableForm.columns.splice(index, 1);
+            }
+
+            function setColumnAsPk(index) {
+                // 将所有列的 primary_key 设为 false，再将目标列设为 true
+                for (var i = 0; i < state.createTableForm.columns.length; i++) {
+                    state.createTableForm.columns[i].primary_key = (i === index);
+                }
+            }
+
+            async function submitCreateTable() {
+                if (!state.currentDatabase) return;
+                var form = state.createTableForm;
+
+                if (!form.name.trim()) {
+                    state.error = t('dataEdit.tableNameRequired');
+                    return;
+                }
+
+                // 校验列定义
+                for (var i = 0; i < form.columns.length; i++) {
+                    if (!form.columns[i].name.trim()) {
+                        state.error = t('dataEdit.columnNameRequired');
+                        return;
+                    }
+                }
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/tables/${state.currentDatabase.file_id}`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            name: form.name.trim(),
+                            columns: form.columns.map(function(col) {
+                                return {
+                                    name: col.name.trim(),
+                                    col_type: col.col_type,
+                                    nullable: col.nullable,
+                                    primary_key: col.primary_key,
+                                    default: col.default || null,
+                                    comment: col.comment || null
+                                };
+                            }),
+                            comment: form.comment || null
+                        })
+                    });
+
+                    closeCreateTableModal();
+                    await loadTables();
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 添加列到现有表 ==========
+
+            function openAddColumnModal() {
+                state.addColumnForm = {
+                    name: '',
+                    col_type: 'str',
+                    nullable: true,
+                    primary_key: false,
+                    default: null,
+                    comment: '',
+                    default_value: null
+                };
+                state.showAddColumnModal = true;
+            }
+
+            function closeAddColumnModal() {
+                state.showAddColumnModal = false;
+            }
+
+            async function submitAddColumn() {
+                if (!state.currentDatabase || !state.currentTable) return;
+                var form = state.addColumnForm;
+
+                if (!form.name.trim()) {
+                    state.error = t('dataEdit.columnNameRequired');
+                    return;
+                }
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/columns/${state.currentDatabase.file_id}/${state.currentTable}`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            column: {
+                                name: form.name.trim(),
+                                col_type: form.col_type,
+                                nullable: form.nullable,
+                                primary_key: form.primary_key,
+                                default: form.default || null,
+                                comment: form.comment || null
+                            },
+                            default_value: form.default_value || null
+                        })
+                    });
+
+                    closeAddColumnModal();
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 删除列 ==========
+
+            async function deleteColumn(columnName) {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                var msg = t('dataEdit.confirmDeleteColumn').replace('{name}', columnName);
+                if (!confirm(msg)) return;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/columns/${state.currentDatabase.file_id}/${state.currentTable}/${columnName}`, {
+                        method: 'DELETE'
+                    });
+
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
             // ========== 单元格展开/列宽拖拽 ==========
 
             function isCellExpanded(rowIndex, colName) {
@@ -1247,7 +1454,12 @@ function createApiClient(state) {
                 startEditTableComment, cancelEditTableComment, saveTableComment,
                 startEditColumnComment, cancelEditColumnComment, saveColumnComment,
                 // 表编辑弹窗
-                openTableEditModal, closeTableEditModal, saveTableEdit, deleteTable,
+                openTableEditModal, closeTableEditModal, saveTableEdit, deleteTable, clearTable,
+                // 新建表
+                openCreateTableModal, closeCreateTableModal, addColumnDef, removeColumnDef,
+                setColumnAsPk, submitCreateTable,
+                // 添加列 / 删除列
+                openAddColumnModal, closeAddColumnModal, submitAddColumn, deleteColumn,
                 // 单元格展开/列宽拖拽
                 isCellExpanded, toggleCellExpand, getColWidth, startColResize,
                 // 侧边栏

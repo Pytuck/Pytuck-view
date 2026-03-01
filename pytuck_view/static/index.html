@@ -126,6 +126,9 @@
                     <div class="sidebar-header">
                         <span v-if="!state.sidebarCollapsed" class="sidebar-title-text">📋 {{ t('table.dataTables') }}</span>
                         <div class="sidebar-actions">
+                            <button v-if="!state.sidebarCollapsed" class="btn-icon" @click="openCreateTableModal" :title="t('dataEdit.createTable')">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                            </button>
                             <button v-if="!state.sidebarCollapsed" class="btn-icon sidebar-search-btn" @click="toggleSidebarSearch" :title="t('common.search')">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                             </button>
@@ -200,6 +203,7 @@
                                             <th>{{ t('table.colPrimaryKey') }}</th>
                                             <th>{{ t('table.colDefault') }}</th>
                                             <th>{{ t('table.colComment') }}</th>
+                                            <th class="col-actions-header">{{ t('dataEdit.actions') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -239,9 +243,23 @@
                                                     </div>
                                                 </template>
                                             </td>
+                                            <td class="col-actions-cell">
+                                                <button
+                                                    v-if="!col.primary_key"
+                                                    class="btn-icon btn-tiny btn-danger"
+                                                    @click="deleteColumn(col.name)"
+                                                    :title="t('dataEdit.deleteColumn')"
+                                                >🗑️</button>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
+                                <div class="schema-actions">
+                                    <button class="btn btn-small" @click="openAddColumnModal">
+                                        ➕ {{ t('dataEdit.addColumnToTable') }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -607,7 +625,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-danger" @click="deleteTable">🗑️ {{ t('dataEdit.deleteTable') }}</button>
+                    <div class="modal-footer-left">
+                        <button class="btn btn-danger" @click="deleteTable">🗑️ {{ t('dataEdit.deleteTable') }}</button>
+                        <button class="btn btn-warning" @click="clearTable">🧹 {{ t('dataEdit.clearTable') }}</button>
+                    </div>
                     <div class="modal-footer-right">
                         <button class="btn" @click="closeTableEditModal">{{ t('common.cancel') }}</button>
                         <button class="btn btn-primary" @click="saveTableEdit">{{ t('dataEdit.save') }}</button>
@@ -660,6 +681,118 @@
                             :disabled="!convertModal.targetEngine || !convertModal.targetPath || convertModal.converting">
                             {{ convertModal.converting ? t('convert.converting') : t('convert.startConvert') }}
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新建表弹窗 -->
+        <div v-if="state.showCreateTableModal" class="modal-overlay" @click.self="closeCreateTableModal">
+            <div class="modal-content modal-wide">
+                <div class="modal-header">
+                    <h3>➕ {{ t('dataEdit.createTable') }}</h3>
+                    <button class="btn-icon" @click="closeCreateTableModal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>{{ t('table.tableName') }}</label>
+                        <input v-model="state.createTableForm.name" class="edit-input" :placeholder="t('table.tableName')" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('table.colComment') }}</label>
+                        <input v-model="state.createTableForm.comment" class="edit-input" :placeholder="t('dataEdit.inputTableComment')" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('table.columns') }}</label>
+                        <div class="create-table-columns">
+                            <div class="create-col-header">
+                                <span class="create-col-name">{{ t('dataEdit.columnName') }}</span>
+                                <span class="create-col-type">{{ t('dataEdit.columnType') }}</span>
+                                <span class="create-col-nullable">{{ t('dataEdit.nullable') }}</span>
+                                <span class="create-col-pk">{{ t('dataEdit.setAsPk') }}</span>
+                                <span class="create-col-actions"></span>
+                            </div>
+                            <div v-for="(col, index) in state.createTableForm.columns" :key="index" class="create-col-row">
+                                <input v-model="col.name" class="edit-input create-col-name" :placeholder="t('dataEdit.columnName')" />
+                                <select v-model="col.col_type" class="edit-input create-col-type">
+                                    <option value="str">str</option>
+                                    <option value="int">int</option>
+                                    <option value="float">float</option>
+                                    <option value="bool">bool</option>
+                                    <option value="list">list</option>
+                                    <option value="dict">dict</option>
+                                    <option value="bytes">bytes</option>
+                                    <option value="datetime">datetime</option>
+                                    <option value="date">date</option>
+                                </select>
+                                <label class="create-col-nullable">
+                                    <input type="checkbox" v-model="col.nullable" />
+                                </label>
+                                <label class="create-col-pk">
+                                    <input type="radio" name="pk-col" :checked="col.primary_key" @change="setColumnAsPk(index)" />
+                                </label>
+                                <button class="btn-icon btn-tiny btn-danger create-col-actions" @click="removeColumnDef(index)" :disabled="state.createTableForm.columns.length <= 1">✕</button>
+                            </div>
+                            <button class="btn btn-small" @click="addColumnDef">➕ {{ t('dataEdit.addColumn') }}</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div></div>
+                    <div class="modal-footer-right">
+                        <button class="btn" @click="closeCreateTableModal">{{ t('common.cancel') }}</button>
+                        <button class="btn btn-primary" @click="submitCreateTable">{{ t('common.confirm') }}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加列弹窗 -->
+        <div v-if="state.showAddColumnModal" class="modal-overlay" @click.self="closeAddColumnModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>➕ {{ t('dataEdit.addColumnToTable') }}</h3>
+                    <button class="btn-icon" @click="closeAddColumnModal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>{{ t('dataEdit.columnName') }}</label>
+                        <input v-model="state.addColumnForm.name" class="edit-input" :placeholder="t('dataEdit.columnName')" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('dataEdit.columnType') }}</label>
+                        <select v-model="state.addColumnForm.col_type" class="edit-input">
+                            <option value="str">str</option>
+                            <option value="int">int</option>
+                            <option value="float">float</option>
+                            <option value="bool">bool</option>
+                            <option value="list">list</option>
+                            <option value="dict">dict</option>
+                            <option value="bytes">bytes</option>
+                            <option value="datetime">datetime</option>
+                            <option value="date">date</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" v-model="state.addColumnForm.nullable" />
+                            {{ t('dataEdit.nullable') }}
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('dataEdit.defaultValue') }}</label>
+                        <input v-model="state.addColumnForm.default_value" class="edit-input" :placeholder="t('dataEdit.defaultValue')" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('table.colComment') }}</label>
+                        <input v-model="state.addColumnForm.comment" class="edit-input" :placeholder="t('dataEdit.inputTableComment')" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div></div>
+                    <div class="modal-footer-right">
+                        <button class="btn" @click="closeAddColumnModal">{{ t('common.cancel') }}</button>
+                        <button class="btn btn-primary" @click="submitAddColumn">{{ t('common.confirm') }}</button>
                     </div>
                 </div>
             </div>

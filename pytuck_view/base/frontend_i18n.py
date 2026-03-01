@@ -366,6 +366,68 @@ class DataEditUI(BaseUIClass):
         key="expandSidebar", zh_cn="展开侧边栏", en_us="Expand sidebar"
     )
 
+    # 新建表
+    CREATE_TABLE = I18nMessage(key="createTable", zh_cn="新建表", en_us="Create Table")
+    COLUMN_NAME = I18nMessage(key="columnName", zh_cn="列名", en_us="Column Name")
+    COLUMN_TYPE = I18nMessage(key="columnType", zh_cn="数据类型", en_us="Data Type")
+    ADD_COLUMN = I18nMessage(key="addColumn", zh_cn="添加列", en_us="Add Column")
+    REMOVE_COLUMN = I18nMessage(key="removeColumn", zh_cn="移除", en_us="Remove")
+    TABLE_CREATED_SUCCESS = I18nMessage(
+        key="tableCreatedSuccess",
+        zh_cn="表创建成功",
+        en_us="Table created successfully",
+    )
+    AT_LEAST_ONE_COLUMN = I18nMessage(
+        key="atLeastOneColumn",
+        zh_cn="至少需要一列",
+        en_us="At least one column required",
+    )
+    COLUMN_NAME_REQUIRED = I18nMessage(
+        key="columnNameRequired",
+        zh_cn="列名不能为空",
+        en_us="Column name is required",
+    )
+    SET_AS_PK = I18nMessage(key="setAsPk", zh_cn="设为主键", en_us="Set as primary key")
+    NULLABLE = I18nMessage(key="nullable", zh_cn="允许空值", en_us="Nullable")
+
+    # 清空表
+    CLEAR_TABLE = I18nMessage(key="clearTable", zh_cn="清空表", en_us="Clear Table")
+    CONFIRM_CLEAR_TABLE = I18nMessage(
+        key="confirmClearTable",
+        zh_cn="确定要清空表 '{name}' 的所有数据吗？此操作不可恢复。",
+        en_us=(
+            "Are you sure you want to clear all data in table '{name}'? "
+            "This action cannot be undone."
+        ),
+    )
+
+    # 添加列到现有表
+    ADD_COLUMN_TO_TABLE = I18nMessage(
+        key="addColumnToTable", zh_cn="添加列", en_us="Add Column"
+    )
+    DEFAULT_VALUE = I18nMessage(
+        key="defaultValue", zh_cn="默认值", en_us="Default Value"
+    )
+
+    # 删除列
+    DELETE_COLUMN = I18nMessage(
+        key="deleteColumn", zh_cn="删除列", en_us="Delete Column"
+    )
+    CONFIRM_DELETE_COLUMN = I18nMessage(
+        key="confirmDeleteColumn",
+        zh_cn="确定要删除列 '{name}' 吗？此操作不可恢复，该列的所有数据将被永久删除。",
+        en_us=(
+            "Are you sure you want to delete column '{name}'? "
+            "This action cannot be undone. "
+            "All data in this column will be permanently deleted."
+        ),
+    )
+    CANNOT_DELETE_PK = I18nMessage(
+        key="cannotDeletePk",
+        zh_cn="不能删除主键列",
+        en_us="Cannot delete primary key column",
+    )
+
 
 class ConvertUI(BaseUIClass):
     """引擎转换 UI 文本"""

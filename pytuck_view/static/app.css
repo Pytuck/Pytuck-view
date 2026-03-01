@@ -1898,3 +1898,88 @@ body {
     border-color: #007bff;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
+
+/* ========== 新建表 / 添加列 / 清空表样式 ========== */
+
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+    border-color: #ffc107;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+    border-color: #d39e00;
+}
+
+.modal-footer-left {
+    display: flex;
+    gap: 8px;
+}
+
+.modal-wide {
+    max-width: 700px;
+}
+
+/* 新建表列定义 */
+.create-table-columns {
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.create-col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+}
+
+.create-col-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.create-col-name {
+    flex: 2;
+    min-width: 0;
+}
+
+.create-col-type {
+    flex: 1;
+    min-width: 80px;
+}
+
+.create-col-nullable,
+.create-col-pk {
+    flex: 0 0 auto;
+    text-align: center;
+    min-width: 60px;
+}
+
+.create-col-actions {
+    flex: 0 0 auto;
+    min-width: 30px;
+}
+
+/* 表结构操作区域 */
+.schema-actions {
+    padding: 12px 0;
+}
+
+/* 列操作按钮 */
+.col-actions-header {
+    width: 60px;
+    text-align: center;
+}
+
+.col-actions-cell {
+    text-align: center;
+    width: 60px;
+}
