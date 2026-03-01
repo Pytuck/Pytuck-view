@@ -1963,6 +1963,16 @@ body {
     min-width: 60px;
 }
 
+.create-col-default {
+    flex: 1;
+    min-width: 60px;
+}
+
+.create-col-comment {
+    flex: 1;
+    min-width: 60px;
+}
+
 .create-col-actions {
     flex: 0 0 auto;
     min-width: 30px;

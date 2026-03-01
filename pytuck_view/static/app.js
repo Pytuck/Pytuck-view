@@ -896,7 +896,7 @@ function createApiClient(state) {
                                     col_type: col.col_type,
                                     nullable: col.nullable,
                                     primary_key: col.primary_key,
-                                    default: col.default || null,
+                                    default: (col.default !== null && col.default !== undefined && col.default !== '') ? col.default : null,
                                     comment: col.comment || null
                                 };
                             }),
@@ -941,6 +941,16 @@ function createApiClient(state) {
                     return;
                 }
 
+                // 非空列必须提供默认值（前置校验）
+                if (!form.nullable && (form.default_value === null || form.default_value === undefined || form.default_value === '')) {
+                    state.error = t('dataEdit.nonNullableNeedsDefault');
+                    return;
+                }
+
+                // 处理默认值：同时用于 Column.default 和填充现有记录
+                var defaultVal = (form.default_value !== null && form.default_value !== undefined && form.default_value !== '')
+                    ? form.default_value : null;
+
                 try {
                     state.loading = true;
                     state.error = null;
@@ -952,15 +962,16 @@ function createApiClient(state) {
                                 col_type: form.col_type,
                                 nullable: form.nullable,
                                 primary_key: form.primary_key,
-                                default: form.default || null,
+                                default: defaultVal,
                                 comment: form.comment || null
                             },
-                            default_value: form.default_value || null
+                            default_value: defaultVal
                         })
                     });
 
                     closeAddColumnModal();
                     await loadTableSchema(state.currentTable);
+                    await loadTableData(state.currentTable, state.currentPageNum);
                 } catch (error) {
                     state.error = error.message;
                 } finally {
@@ -984,6 +995,7 @@ function createApiClient(state) {
                     });
 
                     await loadTableSchema(state.currentTable);
+                    await loadTableData(state.currentTable, state.currentPageNum);
                 } catch (error) {
                     state.error = error.message;
                 } finally {

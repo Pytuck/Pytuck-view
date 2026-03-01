@@ -220,7 +220,7 @@
                                                 <span v-else>-</span>
                                             </td>
                                             <td class="col-default-cell">
-                                                {{ col.default_value || '-' }}
+                                                {{ col.default_value !== null && col.default_value !== undefined ? col.default_value : '-' }}
                                             </td>
                                             <td class="col-comment-cell">
                                                 <template v-if="state.editingColumnComment !== col.name">
@@ -710,6 +710,8 @@
                                 <span class="create-col-type">{{ t('dataEdit.columnType') }}</span>
                                 <span class="create-col-nullable">{{ t('dataEdit.nullable') }}</span>
                                 <span class="create-col-pk">{{ t('dataEdit.setAsPk') }}</span>
+                                <span class="create-col-default">{{ t('dataEdit.defaultValue') }}</span>
+                                <span class="create-col-comment">{{ t('table.colComment') }}</span>
                                 <span class="create-col-actions"></span>
                             </div>
                             <div v-for="(col, index) in state.createTableForm.columns" :key="index" class="create-col-row">
@@ -724,6 +726,7 @@
                                     <option value="bytes">bytes</option>
                                     <option value="datetime">datetime</option>
                                     <option value="date">date</option>
+                                    <option value="timedelta">timedelta</option>
                                 </select>
                                 <label class="create-col-nullable">
                                     <input type="checkbox" v-model="col.nullable" />
@@ -731,6 +734,8 @@
                                 <label class="create-col-pk">
                                     <input type="radio" name="pk-col" :checked="col.primary_key" @change="setColumnAsPk(index)" />
                                 </label>
+                                <input v-model="col.default" class="edit-input create-col-default" :placeholder="t('dataEdit.defaultValue')" />
+                                <input v-model="col.comment" class="edit-input create-col-comment" :placeholder="t('table.colComment')" />
                                 <button class="btn-icon btn-tiny btn-danger create-col-actions" @click="removeColumnDef(index)" :disabled="state.createTableForm.columns.length <= 1">✕</button>
                             </div>
                             <button class="btn btn-small" @click="addColumnDef">➕ {{ t('dataEdit.addColumn') }}</button>
@@ -771,6 +776,7 @@
                             <option value="bytes">bytes</option>
                             <option value="datetime">datetime</option>
                             <option value="date">date</option>
+                            <option value="timedelta">timedelta</option>
                         </select>
                     </div>
                     <div class="form-group">
