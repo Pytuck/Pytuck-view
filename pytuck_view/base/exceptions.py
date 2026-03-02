@@ -50,13 +50,9 @@ class ServiceException(AppException):
     用于表示业务逻辑错误，如资源未找到、权限不足等。
     """
 
-    pass
-
 
 class ResultWarningException(AppException):
     """结果警告（code=2）
 
     用于任何结果为警告级别的错误
     """
-
-    pass
