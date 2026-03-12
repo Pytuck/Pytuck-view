@@ -778,6 +778,40 @@ body {
     font-size: 16px;
 }
 
+/* 内联编辑列属性 */
+.col-editable {
+    cursor: pointer;
+}
+.col-editable:hover {
+    background-color: #e8f0fe;
+}
+.editable-text {
+    border-bottom: 1px dashed #999;
+}
+.edit-select-inline {
+    font-size: 12px;
+    padding: 2px 4px;
+    border: 1px solid #4285f4;
+    border-radius: 3px;
+    outline: none;
+    min-width: 80px;
+}
+.col-default-display {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
+}
+.col-default-edit {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.col-default-edit .edit-input {
+    width: 100px;
+    min-width: 60px;
+}
+
 /* 保留旧的列表样式作为后备 */
 .columns-list {
     padding: 12px 16px 16px;

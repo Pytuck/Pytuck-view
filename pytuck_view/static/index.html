@@ -208,20 +208,65 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="col in visibleColumns" :key="col.name">
+                                        <tr v-for="(col, colIndex) in visibleColumns" :key="col.name">
                                             <td class="col-name-cell">
                                                 {{ col.name }}
                                             </td>
-                                            <td class="col-type-cell">{{ col.type }}</td>
-                                            <td class="col-nullable-cell">
-                                                {{ col.nullable !== false ? t('common.yes') : t('common.no') }}
+                                            <td class="col-type-cell col-editable" @click="startEditColType(col.name, col.type)">
+                                                <template v-if="state.editingColType === col.name">
+                                                    <select
+                                                        v-model="state.editColTypeValue"
+                                                        class="edit-select-inline"
+                                                        @change="saveColType(col.name, col.type)"
+                                                        @blur="cancelEditColType"
+                                                    >
+                                                        <option value="int">int</option>
+                                                        <option value="float">float</option>
+                                                        <option value="str">str</option>
+                                                        <option value="bool">bool</option>
+                                                        <option value="list">list</option>
+                                                        <option value="dict">dict</option>
+                                                        <option value="bytes">bytes</option>
+                                                        <option value="datetime">datetime</option>
+                                                        <option value="date">date</option>
+                                                        <option value="timedelta">timedelta</option>
+                                                    </select>
+                                                </template>
+                                                <template v-else>
+                                                    <span class="editable-text">{{ col.type }}</span>
+                                                </template>
+                                            </td>
+                                            <td class="col-nullable-cell col-editable" @click="toggleColNullable(col.name, col.nullable)">
+                                                <span class="editable-text">{{ col.nullable !== false ? t('common.yes') : t('common.no') }}</span>
                                             </td>
                                             <td class="col-pk-cell">
                                                 <span v-if="col.primary_key" class="pk-badge">🔑</span>
-                                                <span v-else>-</span>
+                                                <button
+                                                    v-else
+                                                    class="btn-icon btn-tiny"
+                                                    @click="setPrimaryKey(col.name)"
+                                                    :title="t('dataEdit.setAsPk')"
+                                                >🔑</button>
                                             </td>
                                             <td class="col-default-cell">
-                                                {{ col.default_value !== null && col.default_value !== undefined ? col.default_value : '-' }}
+                                                <template v-if="state.editingColDefault !== col.name">
+                                                    <div class="col-default-display">
+                                                        <span>{{ col.default_value !== null && col.default_value !== undefined ? col.default_value : '-' }}</span>
+                                                        <button class="btn-icon btn-tiny" @click.stop="startEditColDefault(col.name, col.default_value)" :title="t('dataEdit.editDefault')">✏️</button>
+                                                    </div>
+                                                </template>
+                                                <template v-else>
+                                                    <div class="col-default-edit">
+                                                        <input
+                                                            v-model="state.editColDefaultValue"
+                                                            class="edit-input edit-input-small"
+                                                            @keyup.enter="saveColDefault(col.name)"
+                                                            @keyup.escape="cancelEditColDefault"
+                                                        />
+                                                        <button class="btn-icon btn-tiny btn-save" @click="saveColDefault(col.name)" :title="t('dataEdit.save')">✓</button>
+                                                        <button class="btn-icon btn-tiny btn-cancel" @click="clearColDefault(col.name)" :title="t('dataEdit.clearDefault')">✕</button>
+                                                    </div>
+                                                </template>
                                             </td>
                                             <td class="col-comment-cell">
                                                 <template v-if="state.editingColumnComment !== col.name">
@@ -246,12 +291,24 @@
                                             </td>
                                             <td class="col-actions-cell">
                                                 <button
+                                                    v-if="colIndex > 0"
+                                                    class="btn-icon btn-tiny"
+                                                    @click="moveColumnUp(colIndex)"
+                                                    :title="t('dataEdit.moveColumnUp')"
+                                                >↑</button>
+                                                <button
+                                                    v-if="colIndex < visibleColumns.length - 1"
+                                                    class="btn-icon btn-tiny"
+                                                    @click="moveColumnDown(colIndex)"
+                                                    :title="t('dataEdit.moveColumnDown')"
+                                                >↓</button>
+                                                <button
                                                     v-if="!col.primary_key"
                                                     class="btn-icon btn-tiny btn-danger"
                                                     @click="deleteColumn(col.name)"
                                                     :title="t('dataEdit.deleteColumn')"
                                                 >🗑️</button>
-                                                <span v-else class="text-muted">-</span>
+                                                <span v-if="col.primary_key && colIndex === 0 && visibleColumns.length <= 1" class="text-muted">-</span>
                                             </td>
                                         </tr>
                                     </tbody>

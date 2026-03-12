@@ -290,6 +290,11 @@ function createApiClient(state) {
                     comment: '',
                     default_value: null
                 },
+                // 内联编辑列属性状态
+                editingColType: null,         // 正在编辑类型的列名
+                editColTypeValue: '',         // 编辑中的类型值
+                editingColDefault: null,      // 正在编辑默认值的列名
+                editColDefaultValue: '',      // 编辑中的默认值
             });
 
             // ========== 引擎转换状态 ==========
@@ -1004,6 +1009,206 @@ function createApiClient(state) {
                 }
             }
 
+            // ========== 修改列属性 (alter_column) ==========
+
+            function startEditColType(colName, currentType) {
+                state.editingColType = colName;
+                state.editColTypeValue = currentType;
+            }
+
+            function cancelEditColType() {
+                state.editingColType = null;
+                state.editColTypeValue = '';
+            }
+
+            async function saveColType(colName, oldType) {
+                var newType = state.editColTypeValue;
+                if (newType === oldType) {
+                    cancelEditColType();
+                    return;
+                }
+
+                var msg = t('dataEdit.confirmAlterType')
+                    .replace('{name}', colName)
+                    .replace('{oldType}', oldType)
+                    .replace('{newType}', newType);
+                if (!confirm(msg)) {
+                    cancelEditColType();
+                    return;
+                }
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/columns/${state.currentDatabase.file_id}/${state.currentTable}/${colName}/alter`, {
+                        method: 'POST',
+                        body: JSON.stringify({ col_type: newType })
+                    });
+                    cancelEditColType();
+                    await loadTableSchema(state.currentTable);
+                    await loadTableData(state.currentTable, state.currentPageNum);
+                } catch (error) {
+                    state.error = error.message;
+                    cancelEditColType();
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            async function toggleColNullable(colName, currentNullable) {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                var newNullable = !currentNullable;
+                // 如果从可空改为不可空，提示确认
+                if (!newNullable) {
+                    var msg = t('dataEdit.confirmSetNotNullable').replace('{name}', colName);
+                    if (!confirm(msg)) return;
+                }
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/columns/${state.currentDatabase.file_id}/${state.currentTable}/${colName}/alter`, {
+                        method: 'POST',
+                        body: JSON.stringify({ nullable: newNullable })
+                    });
+                    await loadTableSchema(state.currentTable);
+                    await loadTableData(state.currentTable, state.currentPageNum);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            function startEditColDefault(colName, currentDefault) {
+                state.editingColDefault = colName;
+                state.editColDefaultValue = (currentDefault !== null && currentDefault !== undefined) ? String(currentDefault) : '';
+            }
+
+            function cancelEditColDefault() {
+                state.editingColDefault = null;
+                state.editColDefaultValue = '';
+            }
+
+            async function saveColDefault(colName) {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                var val = state.editColDefaultValue;
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/columns/${state.currentDatabase.file_id}/${state.currentTable}/${colName}/alter`, {
+                        method: 'POST',
+                        body: JSON.stringify({ default: val !== '' ? val : null })
+                    });
+                    cancelEditColDefault();
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            async function clearColDefault(colName) {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/columns/${state.currentDatabase.file_id}/${state.currentTable}/${colName}/alter`, {
+                        method: 'POST',
+                        body: JSON.stringify({ clear_default: true })
+                    });
+                    cancelEditColDefault();
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 设置主键 ==========
+
+            async function setPrimaryKey(colName) {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                var msg = t('dataEdit.confirmSetPrimaryKey').replace('{name}', colName);
+                if (!confirm(msg)) return;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/tables/${state.currentDatabase.file_id}/${state.currentTable}/primary-key`, {
+                        method: 'POST',
+                        body: JSON.stringify({ column_name: colName })
+                    });
+                    await loadTableSchema(state.currentTable);
+                    await loadTableData(state.currentTable, state.currentPageNum);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            // ========== 列排序 ==========
+
+            async function moveColumnUp(colIndex) {
+                if (!state.currentDatabase || !state.currentTable) return;
+                if (colIndex <= 0) return;
+
+                var columns = state.tableSchema.columns;
+                var order = columns.map(function(c) { return c.name; });
+                // 交换位置
+                var temp = order[colIndex];
+                order[colIndex] = order[colIndex - 1];
+                order[colIndex - 1] = temp;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/tables/${state.currentDatabase.file_id}/${state.currentTable}/reorder-columns`, {
+                        method: 'POST',
+                        body: JSON.stringify({ new_order: order })
+                    });
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
+            async function moveColumnDown(colIndex) {
+                if (!state.currentDatabase || !state.currentTable) return;
+
+                var columns = state.tableSchema.columns;
+                if (colIndex >= columns.length - 1) return;
+
+                var order = columns.map(function(c) { return c.name; });
+                // 交换位置
+                var temp = order[colIndex];
+                order[colIndex] = order[colIndex + 1];
+                order[colIndex + 1] = temp;
+
+                try {
+                    state.loading = true;
+                    state.error = null;
+                    await api(`/tables/${state.currentDatabase.file_id}/${state.currentTable}/reorder-columns`, {
+                        method: 'POST',
+                        body: JSON.stringify({ new_order: order })
+                    });
+                    await loadTableSchema(state.currentTable);
+                } catch (error) {
+                    state.error = error.message;
+                } finally {
+                    state.loading = false;
+                }
+            }
+
             // ========== 单元格展开/列宽拖拽 ==========
 
             function isCellExpanded(rowIndex, colName) {
@@ -1481,6 +1686,11 @@ function createApiClient(state) {
                 setColumnAsPk, submitCreateTable,
                 // 添加列 / 删除列
                 openAddColumnModal, closeAddColumnModal, submitAddColumn, deleteColumn,
+                // 修改列属性 / 主键 / 列排序
+                startEditColType, cancelEditColType, saveColType,
+                toggleColNullable,
+                startEditColDefault, cancelEditColDefault, saveColDefault, clearColDefault,
+                setPrimaryKey, moveColumnUp, moveColumnDown,
                 // 单元格展开/列宽拖拽
                 isCellExpanded, toggleCellExpand, getColWidth, startColResize,
                 // 侧边栏
