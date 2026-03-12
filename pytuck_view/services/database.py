@@ -977,3 +977,136 @@ class DatabaseService:
                 DatabaseI18n.DROP_COLUMN_FAILED,
                 error=simplify_exception(e),
             ) from e
+
+    def alter_column(
+        self,
+        table_name: str,
+        column_name: str,
+        *,
+        col_type: str | None = None,
+        nullable: bool | None = None,
+        default: Any = ...,
+    ) -> None:
+        """修改列属性（类型、可空性、默认值）
+
+        Args:
+            table_name: 表名
+            column_name: 列名
+            col_type: 新的列类型（None 表示不修改）
+            nullable: 新的可空性（None 表示不修改）
+            default: 新的默认值（... 表示不修改，None 表示清除默认值）
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 修改失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            # 构建 kwargs：仅传递需要修改的参数
+            kwargs: dict[str, Any] = {}
+            if col_type is not None:
+                resolved_type = _COLUMN_TYPE_MAP.get(col_type)
+                if resolved_type is None:
+                    raise ServiceException(
+                        DatabaseI18n.ALTER_COLUMN_FAILED,
+                        error=f"不支持的列类型: {col_type}",
+                    )
+                kwargs["col_type"] = resolved_type
+            if nullable is not None:
+                kwargs["nullable"] = nullable
+            if default is not ...:
+                kwargs["default"] = default
+
+            if not kwargs:
+                return  # 没有需要修改的属性
+
+            self.storage.alter_column(table_name, column_name, **kwargs)
+            self.storage.flush()
+        except ServiceException:
+            raise
+        except PytuckSchemaError as e:
+            logger.warning(
+                f"修改列 Schema 错误 {table_name}.{column_name}: "
+                f"{simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.ALTER_COLUMN_SCHEMA_ERROR,
+                error=simplify_exception(e),
+            ) from e
+        except Exception as e:
+            logger.error(
+                f"修改列失败 {table_name}.{column_name}: {simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.ALTER_COLUMN_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def set_primary_key(self, table_name: str, column_name: str) -> None:
+        """设置表的主键列
+
+        Args:
+            table_name: 表名
+            column_name: 新的主键列名
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 设置失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            self.storage.set_primary_key(table_name, column_name)
+            self.storage.flush()
+        except PytuckSchemaError as e:
+            logger.warning(
+                f"设置主键 Schema 错误 {table_name}.{column_name}: "
+                f"{simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.SET_PRIMARY_KEY_FAILED,
+                error=simplify_exception(e),
+            ) from e
+        except Exception as e:
+            logger.error(
+                f"设置主键失败 {table_name}.{column_name}: {simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.SET_PRIMARY_KEY_FAILED,
+                error=simplify_exception(e),
+            ) from e
+
+    def reorder_columns(self, table_name: str, new_order: list[str]) -> None:
+        """重新排列列顺序
+
+        Args:
+            table_name: 表名
+            new_order: 新的列名顺序列表
+
+        Raises:
+            RuntimeError: 数据库未打开
+            ServiceException: 排序失败
+        """
+        if not self.storage:
+            raise RuntimeError("数据库未打开")
+
+        try:
+            self.storage.reorder_columns(table_name, new_order)
+            self.storage.flush()
+        except PytuckSchemaError as e:
+            logger.warning(
+                f"重排列顺序 Schema 错误 {table_name}: {simplify_exception(e)}"
+            )
+            raise ServiceException(
+                DatabaseI18n.REORDER_COLUMNS_FAILED,
+                error=simplify_exception(e),
+            ) from e
+        except Exception as e:
+            logger.error(f"重排列顺序失败 {table_name}: {simplify_exception(e)}")
+            raise ServiceException(
+                DatabaseI18n.REORDER_COLUMNS_FAILED,
+                error=simplify_exception(e),
+            ) from e

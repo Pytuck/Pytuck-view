@@ -11,6 +11,8 @@ from pytuck_view.base.response import ResponseUtil
 from pytuck_view.base.schemas import (
     AddColumnData,
     AddColumnRequest,
+    AlterColumnData,
+    AlterColumnRequest,
     ApiResponse,
     ClearTableData,
     ColumnSchema,
@@ -28,6 +30,10 @@ from pytuck_view.base.schemas import (
     PageData,
     RenameTableData,
     RenameTableRequest,
+    ReorderColumnsData,
+    ReorderColumnsRequest,
+    SetPrimaryKeyData,
+    SetPrimaryKeyRequest,
     SuccessResult,
     TableMetadataItem,
     TablePrimaryKeyData,
@@ -506,4 +512,83 @@ async def get_table_primary_key(
             is_pseudo_pk=not is_user_pk and pk_column is not None,
         ),
         i18n_msg=None,
+    )
+
+
+@router.post(
+    "/columns/{file_id}/{table_name}/{column_name}/alter",
+    summary="修改列属性",
+    response_model=ApiResponse[AlterColumnData],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.ALTER_COLUMN)
+async def alter_column(
+    file_id: str, table_name: str, column_name: str, body: AlterColumnRequest
+) -> SuccessResult[AlterColumnData]:
+    """修改列的类型、可空性或默认值"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    # 处理 default 参数：clear_default=True 时传 None，否则按值传递
+    default_arg: Any = ...
+    if body.clear_default:
+        default_arg = None
+    elif body.default is not None:
+        default_arg = body.default
+
+    db_service.alter_column(
+        table_name,
+        column_name,
+        col_type=body.col_type,
+        nullable=body.nullable,
+        default=default_arg,
+    )
+
+    return SuccessResult(
+        data=AlterColumnData(table_name=table_name, column_name=column_name),
+        i18n_msg=DatabaseI18n.ALTER_COLUMN_SUCCESS,
+    )
+
+
+@router.post(
+    "/tables/{file_id}/{table_name}/primary-key",
+    summary="设置主键",
+    response_model=ApiResponse[SetPrimaryKeyData],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.SET_PRIMARY_KEY)
+async def set_primary_key(
+    file_id: str, table_name: str, body: SetPrimaryKeyRequest
+) -> SuccessResult[SetPrimaryKeyData]:
+    """设置表的主键列"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    db_service.set_primary_key(table_name, body.column_name)
+
+    return SuccessResult(
+        data=SetPrimaryKeyData(table_name=table_name, column_name=body.column_name),
+        i18n_msg=DatabaseI18n.SET_PRIMARY_KEY_SUCCESS,
+    )
+
+
+@router.post(
+    "/tables/{file_id}/{table_name}/reorder-columns",
+    summary="重排列顺序",
+    response_model=ApiResponse[ReorderColumnsData],
+)
+@ResponseUtil(i18n_summary=ApiSummaryI18n.REORDER_COLUMNS)
+async def reorder_columns(
+    file_id: str, table_name: str, body: ReorderColumnsRequest
+) -> SuccessResult[ReorderColumnsData]:
+    """重新排列表的列顺序"""
+    if file_id not in db_services:
+        raise ServiceException(DatabaseI18n.DB_NOT_OPENED)
+
+    db_service = db_services[file_id]
+    db_service.reorder_columns(table_name, body.new_order)
+
+    return SuccessResult(
+        data=ReorderColumnsData(table_name=table_name, new_order=body.new_order),
+        i18n_msg=DatabaseI18n.REORDER_COLUMNS_SUCCESS,
     )

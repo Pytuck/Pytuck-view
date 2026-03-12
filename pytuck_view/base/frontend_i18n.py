@@ -433,6 +433,46 @@ class DataEditUI(BaseUIClass):
         en_us="Non-nullable column requires a default value when table has data",
     )
 
+    # 修改列属性
+    ALTER_COLUMN = I18nMessage(key="alterColumn", zh_cn="修改列", en_us="Alter Column")
+    CONFIRM_ALTER_TYPE = I18nMessage(
+        key="confirmAlterType",
+        zh_cn=(
+            "确定要将列 '{name}' 的类型从 '{oldType}' "
+            "改为 '{newType}' 吗？不兼容的数据可能导致错误。"
+        ),
+        en_us=(
+            "Are you sure you want to change column '{name}' type from "
+            "'{oldType}' to '{newType}'? Incompatible data may cause errors."
+        ),
+    )
+    CONFIRM_SET_NOT_NULLABLE = I18nMessage(
+        key="confirmSetNotNullable",
+        zh_cn="确定要将列 '{name}' 设为不可空吗？现有的空值数据可能导致错误。",
+        en_us=(
+            "Are you sure you want to set column '{name}' as not nullable? "
+            "Existing null values may cause errors."
+        ),
+    )
+    CONFIRM_SET_PRIMARY_KEY = I18nMessage(
+        key="confirmSetPrimaryKey",
+        zh_cn="确定要将列 '{name}' 设为主键吗？原主键设置将被替换。",
+        en_us=(
+            "Are you sure you want to set column '{name}' as primary key? "
+            "The current primary key will be replaced."
+        ),
+    )
+    MOVE_COLUMN_UP = I18nMessage(key="moveColumnUp", zh_cn="上移", en_us="Move Up")
+    MOVE_COLUMN_DOWN = I18nMessage(
+        key="moveColumnDown", zh_cn="下移", en_us="Move Down"
+    )
+    EDIT_DEFAULT = I18nMessage(
+        key="editDefault", zh_cn="编辑默认值", en_us="Edit Default"
+    )
+    CLEAR_DEFAULT = I18nMessage(
+        key="clearDefault", zh_cn="清除默认值", en_us="Clear Default"
+    )
+
 
 class ConvertUI(BaseUIClass):
     """引擎转换 UI 文本"""

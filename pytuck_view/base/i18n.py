@@ -52,6 +52,9 @@ class ApiSummaryI18n:
     CLEAR_TABLE = I18nMessage(zh_cn="清空表", en_us="Clear table")
     ADD_COLUMN = I18nMessage(zh_cn="添加列", en_us="Add column")
     DROP_COLUMN = I18nMessage(zh_cn="删除列", en_us="Drop column")
+    ALTER_COLUMN = I18nMessage(zh_cn="修改列属性", en_us="Alter column")
+    SET_PRIMARY_KEY = I18nMessage(zh_cn="设置主键", en_us="Set primary key")
+    REORDER_COLUMNS = I18nMessage(zh_cn="重排列顺序", en_us="Reorder columns")
 
 
 class FileI18n:
@@ -262,6 +265,40 @@ class DatabaseI18n:
     DROP_COLUMN_FAILED = I18nMessage(
         zh_cn="删除列失败: {error}",
         en_us="Drop column failed: {error}",
+    )
+
+    # 修改列属性
+    ALTER_COLUMN_SUCCESS = I18nMessage(
+        zh_cn="列属性修改成功",
+        en_us="Column altered successfully",
+    )
+    ALTER_COLUMN_SCHEMA_ERROR = I18nMessage(
+        zh_cn="无法修改列: {error}",
+        en_us="Cannot alter column: {error}",
+    )
+    ALTER_COLUMN_FAILED = I18nMessage(
+        zh_cn="修改列属性失败: {error}",
+        en_us="Alter column failed: {error}",
+    )
+
+    # 设置主键
+    SET_PRIMARY_KEY_SUCCESS = I18nMessage(
+        zh_cn="主键设置成功",
+        en_us="Primary key set successfully",
+    )
+    SET_PRIMARY_KEY_FAILED = I18nMessage(
+        zh_cn="设置主键失败: {error}",
+        en_us="Set primary key failed: {error}",
+    )
+
+    # 重排列顺序
+    REORDER_COLUMNS_SUCCESS = I18nMessage(
+        zh_cn="列顺序更新成功",
+        en_us="Columns reordered successfully",
+    )
+    REORDER_COLUMNS_FAILED = I18nMessage(
+        zh_cn="重排列顺序失败: {error}",
+        en_us="Reorder columns failed: {error}",
     )
 
 

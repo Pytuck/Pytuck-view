@@ -159,6 +159,29 @@ class AddColumnRequest(BaseModel):
     default_value: Any = Field(None, description="为现有记录填充的默认值")
 
 
+class AlterColumnRequest(BaseModel):
+    """修改列属性请求"""
+
+    col_type: str | None = Field(None, description="新的列类型")
+    nullable: bool | None = Field(None, description="新的可空性")
+    default: Any = Field(None, description="新的默认值")
+    clear_default: bool = Field(
+        False, description="是否清除默认值（与 default=None 区分）"
+    )
+
+
+class SetPrimaryKeyRequest(BaseModel):
+    """设置主键请求"""
+
+    column_name: str = Field(..., min_length=1, description="新的主键列名")
+
+
+class ReorderColumnsRequest(BaseModel):
+    """重排列顺序请求"""
+
+    new_order: list[str] = Field(..., min_length=1, description="新的列名顺序")
+
+
 # ========== 文件相关响应数据模型 ==========
 
 
@@ -360,6 +383,27 @@ class DropColumnData(BaseModel):
 
     table_name: str = Field(..., description="表名")
     column_name: str = Field(..., description="被删除的列名")
+
+
+class AlterColumnData(BaseModel):
+    """修改列属性响应数据"""
+
+    table_name: str = Field(..., description="表名")
+    column_name: str = Field(..., description="列名")
+
+
+class SetPrimaryKeyData(BaseModel):
+    """设置主键响应数据"""
+
+    table_name: str = Field(..., description="表名")
+    column_name: str = Field(..., description="新的主键列名")
+
+
+class ReorderColumnsData(BaseModel):
+    """重排列顺序响应数据"""
+
+    table_name: str = Field(..., description="表名")
+    new_order: list[str] = Field(..., description="新的列顺序")
 
 
 class TablePrimaryKeyData(BaseModel):
